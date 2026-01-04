@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Словодел</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
+      
+      :root {
+        /* Интеграция с темой Telegram */
+        --bg-color: var(--tg-theme-bg-color, #eef2ff);
+        --card-bg: var(--tg-theme-secondary-bg-color, #ffffff);
+        --text-color: var(--tg-theme-text-color, #1e1b4b);
+        --input-bg: var(--tg-theme-secondary-bg-color, #f3f4f6);
+        --accent-color: var(--tg-theme-button-color, #4f46e5);
+        --accent-text: var(--tg-theme-button-text-color, #ffffff);
+      }
+
+      body.dark-theme {
+        --bg-color: var(--tg-theme-bg-color, #111827);
+        --card-bg: var(--tg-theme-secondary-bg-color, #1f2937);
+        --text-color: var(--tg-theme-text-color, #f9fafb);
+        --input-bg: var(--tg-theme-secondary-bg-color, #374151);
+      }
+
+      body {
+        font-family: 'Nunito', sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        overscroll-behavior: none;
+        user-select: none;
+        -webkit-user-select: none;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        overflow: hidden;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+
+      .theme-card {
+        background-color: var(--card-bg);
+        color: var(--text-color);
+      }
+
+      .theme-input {
+        background-color: var(--input-bg);
+        color: var(--text-color);
+      }
+
+      /* --- START STREAK ANIMATION --- */
+      @keyframes flame-glow {
+        0%, 100% { filter: drop-shadow(0 0 2px #f97316) saturate(1.2); transform: scale(1); }
+        50% { filter: drop-shadow(0 0 10px #ea580c) saturate(1.8); transform: scale(1.15); }
+      }
+      .fire-active {
+        animation: flame-glow 1.2s ease-in-out infinite;
+        color: #f97316;
+      }
+      .fire-inactive {
+        filter: grayscale(1);
+        opacity: 0.3;
+      }
+      /* --- END STREAK ANIMATION --- */
+
+      @keyframes spin { 100% { transform: rotate(360deg); } }
+      .spinner { animation: spin 1s linear infinite; }
+      
+      input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: 24px;
+        width: 24px;
+        border-radius: 50%;
+        background: var(--accent-color);
+        cursor: pointer;
+        border: 3px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      }
+      
+      .animate-pop { animation: pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+      @keyframes pop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
+    
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+  }
+}
+</script>
+  <link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+    <script>
+      // Инициализация Telegram WebApp
+      const tg = window.Telegram.WebApp;
+      tg.ready();
+      tg.expand();
+
+      // Настройка темы под Telegram
+      if (tg.colorScheme === 'dark') {
+        document.body.classList.add('dark-theme');
+      }
+    </script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
