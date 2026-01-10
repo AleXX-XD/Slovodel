@@ -12,8 +12,8 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "https://viyqhdvziizfvokmkrgb.supabase.
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# Время одного раунда в секундах (30 минут = 1800)
-UPDATE_INTERVAL = 30 * 60 
+# Время одного раунда в секундах (24 часа = 86400)
+UPDATE_INTERVAL = 24 * 60 * 60 
 
 # Инициализация клиента Supabase
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -42,8 +42,8 @@ def generate_grid(level):
             break
         
         if c in RARE_LIST:
-            # 30% шанс на редкую букву
-            if random.random() < 0.3 and rare_count < 1:
+            # 20% шанс на редкую букву
+            if random.random() < 0.2 and rare_count < 1:
                 letters.append(c)
                 rare_count += 1
         else:

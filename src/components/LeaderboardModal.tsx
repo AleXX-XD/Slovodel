@@ -90,11 +90,11 @@ export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, curren
                       {getPlaceIcon(rank - 1)}
                     </div>
                     <img src={player.avatar_url || './image/book_face_1.png'} alt="avatar" className="w-10 h-10 rounded-full bg-indigo-100" />
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <p className={`font-bold truncate ${isCurrentUser ? 'text-indigo-600 dark:text-indigo-200' : 'text-gray-800 dark:text-white'}`}>{player.name}</p>
                       <p className="text-[10px] font-bold opacity-50 uppercase text-gray-600 dark:text-white/70">{activeTab === 'all' ? getUserRank(player.score) : 'Очки за день'}</p>
                     </div>
-                    <span className="font-black text-amber-600 dark:text-amber-300">{player.score}</span>
+                    <span className="font-black text-amber-600 dark:text-amber-300 w-24 text-right shrink-0">{player.score}</span>
                   </div>
                 );
               });
@@ -108,11 +108,11 @@ export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, curren
                     {getPlaceIcon(currentUserRankData.rank - 1)}
                   </div>
                   <img src={currentUserRankData.avatar_url || './image/book_face_1.png'} alt="avatar" className="w-10 h-10 rounded-full bg-indigo-100" />
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className="font-bold truncate text-indigo-600 dark:text-indigo-200">{currentUserRankData.username}</p>
                     <p className="text-[10px] font-bold opacity-50 uppercase text-gray-600 dark:text-white/70">{getUserRank(currentUserRankData.score)}</p>
                   </div>
-                  <span className="font-black text-amber-600 dark:text-amber-300">{currentUserRankData.score}</span>
+                  <span className="font-black text-amber-600 dark:text-amber-300 w-24 text-right shrink-0">{currentUserRankData.score}</span>
                 </div>
               </>
             )}

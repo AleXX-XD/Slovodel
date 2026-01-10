@@ -62,22 +62,45 @@ const saveDailyScore = async (data: {
   challengeId: string;
   levelScores?: Record<number, number>;
 }) => {
+  const challengeIdInt = parseInt(data.challengeId) || 0;
   
-  const { error } = await supabase
+  // 1. Проверяем, есть ли уже запись для этого игрока в этом испытании
+  const { data: existingEntry } = await supabase
     .from('daily_scores')
-    .upsert({
-      telegram_id: data.telegramId,
-      username: data.username,
-      avatar_url: data.avatarUrl,
-      score: data.score,
-      challenge_id: parseInt(data.challengeId), // Пишем в новую колонку
-      game_date: getDailyDateString(), // Оставляем дату для истории/отладки
-      bonus_time: data.bonuses?.time,
-      bonus_hint: data.bonuses?.hint,
-      bonus_swap: data.bonuses?.swap,
-      bonus_wildcard: data.bonuses?.wildcard,
-      level_scores: data.levelScores
-    }, { onConflict: 'telegram_id,challenge_id' }); // Используем новый индекс
+    .select('telegram_id')
+    .eq('telegram_id', data.telegramId)
+    .eq('challenge_id', challengeIdInt)
+    .single();
+
+  const payload = {
+    telegram_id: data.telegramId,
+    username: data.username,
+    avatar_url: data.avatarUrl,
+    score: data.score,
+    challenge_id: challengeIdInt,
+    game_date: getDailyDateString(),
+    bonus_time: data.bonuses?.time,
+    bonus_hint: data.bonuses?.hint,
+    bonus_swap: data.bonuses?.swap,
+    bonus_wildcard: data.bonuses?.wildcard,
+    level_scores: data.levelScores
+  };
+
+  let error;
+
+  if (existingEntry) {
+    // Если запись есть — обновляем (ID не тратится)
+    ({ error } = await supabase
+      .from('daily_scores')
+      .update(payload)
+      .eq('telegram_id', data.telegramId)
+      .eq('challenge_id', challengeIdInt));
+  } else {
+    // Если записи нет — создаем новую (ID увеличивается на 1)
+    ({ error } = await supabase
+      .from('daily_scores')
+      .insert(payload));
+  }
 
   if (error) console.error('Ошибка сохранения ежедневного счета:', error.message);
 };
