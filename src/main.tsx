@@ -263,7 +263,7 @@ const updateCustomWord = async (id: number, newWord: string) => {
 };
 
 // Функция для ответа на отзыв
-const sendFeedbackReply = async (feedbackId: number, telegramId: number, message: string) => {
+const sendFeedbackReply = async (feedbackId: number, message: string) => {
   // 1. Обновляем статус в БД
   const { error: dbError } = await supabase
     .from('feedback')
