@@ -62,7 +62,16 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   const [shopPreviousScreen, setShopPreviousScreen] = useState<'about' | 'achievements' | null>(null);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [isDailyChallengeOpen, setIsDailyChallengeOpen] = useState(false);
-  const [currentChallengeId, setCurrentChallengeId] = useState<string>('1');
+  const [currentChallengeId, setCurrentChallengeId] = useState<string>(() => {
+    const saved = localStorage.getItem('slovodel_daily_play_v2');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.challengeId) return parsed.challengeId;
+      } catch (e) {}
+    }
+    return '1';
+  });
   const [challengeLetters, setChallengeLetters] = useState<any>(null);
   const [challengeEndTime, setChallengeEndTime] = useState<string | null>(null);
 

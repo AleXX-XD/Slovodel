@@ -19,7 +19,7 @@ UPDATE_INTERVAL = 30 * 60
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # --- ГЕНЕРАЦИЯ БУКВ ---
-VOWELS_UNIQUE = "АЕЁИОУЫЭЮЯ"
+VOWELS_UNIQUE = "АЕИОУЮЯ"
 COMMON_CONSONANTS = "БВГДЗКЛМНПРСТ"
 RARE_LIST = "ЙЦФЧХШЩЬЫЖЭ"
 
@@ -94,8 +94,8 @@ def run_game_cycle():
                 bonus_amount = 0
                 
                 # Определение награды
-                if rank == 1: bonus_amount = 5
-                elif rank == 2: bonus_amount = 3
+                if rank == 1: bonus_amount = 3
+                elif rank == 2: bonus_amount = 2
                 elif rank == 3: bonus_amount = 1
                 
                 if bonus_amount > 0:
