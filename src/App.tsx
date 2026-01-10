@@ -356,7 +356,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
                         challengeId: currentChallengeId,
                         scores: {},
                         userId: tgUser.id,
-                        bonuses: { time: 2, hint: 2, swap: 2, wildcard: 2 }
+                        bonuses: { time: 1, hint: 1, swap: 1, wildcard: 1 }
                     };
                 }
                 return prev;
@@ -535,7 +535,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       // Если есть сохраненные бонусы для дейлика на сегодня — используем их, иначе даем по 2
       const dailyBonuses = (dailyStatus.challengeId === currentChallengeId && dailyStatus.bonuses) 
         ? dailyStatus.bonuses 
-        : { time: 2, hint: 2, swap: 2, wildcard: 2 };
+        : { time: 1, hint: 1, swap: 1, wildcard: 1 };
 
       setBonusTimeLeft(dailyBonuses.time);
       setBonusHintLeft(dailyBonuses.hint);
@@ -990,6 +990,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           onStart={(level) => startGame(level, true)}
           playSfx={playSfx}
           completedLevels={dailyLevelsDone}
+          currentScore={currentDailyScore}
         />
       )}
       {showGlobalRanking && <LeaderboardModal

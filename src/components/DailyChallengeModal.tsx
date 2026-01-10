@@ -5,9 +5,10 @@ interface DailyChallengeModalProps {
   onStart: (level: number) => void;
   playSfx: (sound: any) => void;
   completedLevels: number[];
+  currentScore?: number;
 }
 
-export const DailyChallengeModal = ({ onClose, onStart, playSfx, completedLevels }: DailyChallengeModalProps) => {
+export const DailyChallengeModal = ({ onClose, onStart, playSfx, completedLevels, currentScore = 0 }: DailyChallengeModalProps) => {
   return (
     <div className="fixed inset-0 bg-black/70 z-[400] flex items-center justify-center p-4 backdrop-blur-md">
       <div className="bg-white/80 dark:bg-white/10 backdrop-blur-xl rounded-3xl w-full max-w-sm flex flex-col overflow-hidden shadow-2xl animate-pop border border-white/20 relative">
@@ -23,9 +24,15 @@ export const DailyChallengeModal = ({ onClose, onStart, playSfx, completedLevels
         
         <div className="p-6 space-y-4">
           <div className="bg-amber-500/10 dark:bg-amber-500/20 p-4 rounded-2xl border border-amber-500/20">
-            <div className="flex items-center gap-2 mb-2 text-amber-700 dark:text-amber-300 font-bold uppercase text-xs tracking-wider">
-              <Calendar size={14} />
-              <span>Сегодня</span>
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-bold uppercase text-xs tracking-wider">
+                <Calendar size={14} />
+                <span>Сегодня</span>
+              </div>
+              <div className="flex flex-col items-end">
+                 <span className="text-[10px] font-bold uppercase opacity-60 text-amber-900 dark:text-amber-100">Ваши очки</span>
+                 <span className="text-xl font-black text-amber-600 dark:text-amber-400 leading-none">{currentScore}</span>
+              </div>
             </div>
             <p className="text-sm text-gray-800 dark:text-white opacity-80">
               Пройдите все 3 уровня сложности, чтобы попасть в рейтинг! Для прохождения вам доступно по 2 подсказки каждого вида.

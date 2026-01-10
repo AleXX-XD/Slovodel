@@ -33,6 +33,9 @@ def generate_grid(level):
     letters.extend(vowels_pool[:target_vowels])
     
     # 2. Согласные (с шансом на редкие)
+    # Определяем заранее, будет ли редкая буква (30% шанс на весь уровень)
+    allow_rare = random.random() < 0.3
+    
     cons_pool = list(COMMON_CONSONANTS + RARE_LIST)
     random.shuffle(cons_pool)
     
@@ -42,8 +45,8 @@ def generate_grid(level):
             break
         
         if c in RARE_LIST:
-            # 20% шанс на редкую букву
-            if random.random() < 0.2 and rare_count < 1:
+            # Добавляем редкую, только если разрешено и еще нет ни одной
+            if allow_rare and rare_count < 1:
                 letters.append(c)
                 rare_count += 1
         else:
@@ -136,8 +139,11 @@ def run_game_cycle():
             "6": generate_grid(6)
         }
         
-        # Рассчитываем время окончания (UTC)
-        end_time = (datetime.now(timezone.utc) + timedelta(seconds=UPDATE_INTERVAL)).isoformat()
+        # Рассчитываем время окончания (следующая полночь по UTC)
+        # Это синхронизирует таймер в игре с расписанием GitHub Actions (00:00 UTC)
+        now_utc = datetime.now(timezone.utc)
+        next_midnight = now_utc.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        end_time = next_midnight.isoformat()
 
         # Вставляем в таблицу challenges (ID создастся автоматически)
         new_challenge = supabase.table("challenges").insert({
