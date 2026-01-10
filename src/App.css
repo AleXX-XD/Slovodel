@@ -1,0 +1,128 @@
+@variant dark (&:where(.dark, .dark *));
+
+/* --- ПЕРЕМЕННЫЕ ЦВЕТОВ --- */
+:root {
+  --bg-main: #EEF2FF;
+  --card-bg: #FFFFFF;
+  --text-main: #1F2937;
+  --text-muted: #6B7280;
+  --accent: #4F46E5;
+  --accent-hover: #4338CA;
+  --danger: #EF4444;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --border: rgba(0, 0, 0, 0.05);
+  --overlay: rgba(0, 0, 0, 0.6);
+  
+}
+
+.dark {
+  --bg-main: #0F172A;
+  --card-bg: #1E293B;
+  --text-main: #F8FAFC;
+  --text-muted: #94A3B8;
+  --accent: #6366F1;
+  --accent-hover: #818CF8;
+  --border: rgba(255, 255, 255, 0.1);
+  --overlay: rgba(0, 0, 0, 0.85);
+}
+
+/* --- БАЗОВЫЕ СТИЛИ --- */
+html, body {
+  background-color: var(--bg-main) !important;
+  color: var(--text-main) !important;
+  font-family: 'Inter', system-ui, sans-serif;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  transition: background-color 0.3s ease;
+}
+
+#root {
+  height: 100%;
+}
+
+/* --- ОБЩИЕ КЛАССЫ ИНТЕРФЕЙСА --- */
+.theme-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: var(--overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 500;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background-color: var(--card-bg);
+  width: 100%;
+  max-width: 360px;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  animation: pop 0.3s ease-out;
+}
+
+/* --- КНОПКИ --- */
+.btn-base {
+  padding: 1rem;
+  border-radius: 1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+}
+
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:active { transform: scale(0.96); }
+
+.btn-ghost { background: var(--border); color: var(--text-main); }
+
+/* --- ИГРОВАЯ СЕТКА --- */
+.letter-tile {
+  background-color: var(--card-bg);
+  border: 2px solid var(--border);
+  border-bottom: 4px solid var(--border);
+  color: var(--accent);
+  font-size: 1.875rem;
+  font-weight: 900;
+  border-radius: 1rem;
+  height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+}
+
+.letter-tile:active {
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+}
+
+/* --- АНИМАЦИИ --- */
+@keyframes pop {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Яркая подсветка для букв из подсказки */
+.letter-hint {
+  background-color: #ffe180 !important; /* Яркий желтый (Amber 300) */
+  border-color: #F59E0B !important;     /* Оранжевая граница (Amber 500) */
+  color: #5b350c !important;            /* Темно-коричневый текст для контраста */
+  z-index: 10;
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+}

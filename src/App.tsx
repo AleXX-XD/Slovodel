@@ -1,0 +1,1086 @@
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import type { GameStatus, WordEntry } from './types';
+import { loadDictionary, getDictionary } from './utils/dictionary';
+import { SOUNDS } from './utils/constants';
+import { getDailyDateString, calculateStreakStatus, getStreakTitle, getUserRank, generateGrid } from './utils/gameUtils';
+import { CollectionModal, type RareWord } from './components/CollectionModal';
+import { LeaderboardModal } from './components/LeaderboardModal';
+import { SettingsMenu } from './components/SettingsMenu';
+import { AboutSection } from './components/AboutSection';
+import { AchievementsModal } from './components/AchievementsModal';
+import { MainMenu } from './components/MainMenu';
+import { GameScreen } from './components/GameScreen';
+import { ResultsScreen } from './components/ResultsScreen';
+import { ShopModal } from './components/ShopModal';
+import { AdminPanelModal } from './components/AdminPanelModal';
+import { DailyChallengeModal } from './components/DailyChallengeModal';
+
+/* --- START THEME LOGIC --- */
+const useTheme = () => {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('slovodel_theme') as 'light' | 'dark';
+    return saved || 'light';
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('slovodel_theme', theme);
+  }, [theme]);
+
+  return { theme, setTheme };
+};
+/* --- END THEME LOGIC --- */
+
+// --- ГЛАВНЫЙ КОМПОНЕНТ ---
+interface Player {
+  name: string;
+  score: number;
+  telegram_id?: number;
+  avatar_url?: string;
+}
+export default function App({ saveUserData, saveDailyScore, getUserData, getActiveChallenge, getLeaderboard, getDailyLeaderboard, fetchPreviousDailyLeaderboard, getUserDailyScore, fetchUserRank, saveFeedback, fetchFeedbacks, addCustomWord, fetchCustomWords, fetchAdminCustomWords, deleteCustomWord, updateCustomWord, sendFeedbackReply, archiveFeedback, deleteFeedback, tg }: any) {
+  const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
+  const USER_NAME = tgUser ? (tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '')) : 'Анонимный Лингвист';
+  
+  const ADMIN_ID = 818790686; // ЗАМЕНИТЕ НА ВАШ TELEGRAM ID
+  
+  const [status, setStatus] = useState<GameStatus>('menu');
+  const [isDictLoading, setIsDictLoading] = useState(true);
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [score, setScore] = useState(0);
+  const [multiplier, setMultiplier] = useState(1);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isDailyMode, setIsDailyMode] = useState(false);
+  const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
+  const [showCollection, setShowCollection] = useState(false);
+  const [isShopOpen, setIsShopOpen] = useState(false);
+  const [shopPreviousScreen, setShopPreviousScreen] = useState<'about' | 'achievements' | null>(null);
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
+  const [isDailyChallengeOpen, setIsDailyChallengeOpen] = useState(false);
+  const [currentChallengeId, setCurrentChallengeId] = useState<string>('1');
+  const [challengeLetters, setChallengeLetters] = useState<any>(null);
+  const [challengeEndTime, setChallengeEndTime] = useState<string | null>(null);
+
+  // Состояния для глобального рейтинга
+  const [showGlobalRanking, setShowGlobalRanking] = useState(false);
+  const [globalData, setGlobalData] = useState<Player[]>([]);
+  const [currentUserRank, setCurrentUserRank] = useState<any>(null);
+  const [leaderboardTab, setLeaderboardTab] = useState<'all' | 'daily' | 'previous'>('all');
+  const [totalPlayersCount, setTotalPlayersCount] = useState(0);
+  const [isLeaderboardLoading, setIsLeaderboardLoading] = useState(false);
+
+  const { theme, setTheme } = useTheme();
+
+  const [musicVolume, setMusicVolume] = useState(() => Number(localStorage.getItem('slovodel_music_vol') ?? 0.3));
+  const [sfxVolume, setSfxVolume] = useState(() => Number(localStorage.getItem('slovodel_sfx_vol') ?? 0.5));
+  const bgMusicRef = useRef<HTMLAudioElement | null>(null);
+
+  const [totalScore, setTotalScore] = useState(() => {
+    const saved = localStorage.getItem('slovodel_total_score');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [highScore, setHighScore] = useState(() => {
+    const saved = localStorage.getItem('slovodel_high_score');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [dailyWins, setDailyWins] = useState(() => {
+    const saved = localStorage.getItem('slovodel_daily_wins');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [totalWords, setTotalWords] = useState(() => {
+    const saved = localStorage.getItem('slovodel_total_words');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [streak, setStreak] = useState(() => calculateStreakStatus().count);
+  const [hasPlayedToday, setHasPlayedToday] = useState(() => localStorage.getItem('slovodel_streak_date') === getDailyDateString());
+  const [streakMilestone, setStreakMilestone] = useState<string | null>(null);
+
+  const [rareWords, setRareWords] = useState<RareWord[]>(() => {
+    const saved = localStorage.getItem('slovodel_rare_words');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('slovodel_rare_words', JSON.stringify(rareWords));
+  }, [rareWords]);
+
+  const [dailyStatus, setDailyStatus] = useState<{ 
+    challengeId: string; 
+    scores: Record<number, number>;
+    bonuses?: { time: number; hint: number; swap: number; wildcard: number };
+    userId?: number;
+  }>(() => {
+    const saved = localStorage.getItem('slovodel_daily_play_v2');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      const isSameUser = parsed.userId === tgUser?.id;
+      // Проверяем, не устарел ли локальный сейв (сравниваем с дефолтным '1', позже обновим из БД)
+      if (isSameUser && parsed.challengeId && parsed.scores) return parsed;
+    }
+    return { challengeId: '1', scores: {}, userId: tgUser?.id };
+  });
+
+  const [lastRoundRecordBeaten, setLastRoundRecordBeaten] = useState<number | null>(null);
+  const [newRankReached, setNewRankReached] = useState<string | null>(null);
+
+  const showToast = useCallback((text: string, type: 'good' | 'bad') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 3500);
+  }, []);
+
+  /* --- INITIAL TELEGRAM EFFECTS --- */
+  useEffect(() => {
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      // indigo-200 (#c7d2fe) для светлой, slate-900 (#0f172a) для темной
+      const color = theme === 'light' ? '#c7d2fe' : '#0f172a';
+      tg.setHeaderColor(color);
+      if (tg.setBackgroundColor) tg.setBackgroundColor(color);
+    }
+  }, [theme, tg]);
+
+  /* --- INITIAL STREAK CHECK --- */
+  useEffect(() => {
+    const res = calculateStreakStatus();
+    if (res.status === 'reset' && streak > 0) {
+      showToast('Твой огонь погас... Но ничего, фениксы всегда возрождаются из пепла и букв! Начинаем новую серию!', 'bad');
+      setStreak(0);
+      localStorage.setItem('slovodel_streak_count', '0');
+    }
+  }, []);
+
+  const [grid, setGrid] = useState<string[]>([]);
+  const [currentInput, setCurrentInput] = useState<string[]>([]);
+  const [foundWords, setFoundWords] = useState<WordEntry[]>([]);
+  const [message, setMessage] = useState<{ text: string, type: 'good' | 'bad' } | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  
+  // Бонусы: инициализация из localStorage (по умолчанию 3, если пусто)
+  const [bonusTimeLeft, setBonusTimeLeft] = useState(() => Number(localStorage.getItem('slovodel_bonus_time') ?? 3));
+  const [bonusSwapLeft, setBonusSwapLeft] = useState(() => Number(localStorage.getItem('slovodel_bonus_swap') ?? 3));
+  const [bonusHintLeft, setBonusHintLeft] = useState(() => Number(localStorage.getItem('slovodel_bonus_hint') ?? 3));
+  const [bonusWildcardLeft, setBonusWildcardLeft] = useState(() => Number(localStorage.getItem('slovodel_bonus_wildcard') ?? 3));
+
+  // Реф для хранения бонусов пользователя во время ежедневного испытания
+  const userBonusesRef = useRef({ time: 0, hint: 0, swap: 0, wildcard: 0 });
+
+  const [wildcardActiveSeconds, setWildcardActiveSeconds] = useState(0);
+  const [hintActiveSeconds, setHintActiveSeconds] = useState(0);
+  const [hintRevealLeft, setHintRevealLeft] = useState(0);
+  const [swapTargetIdx, setSwapTargetIdx] = useState<number | null>(null);
+  const [isSwapActive, setIsSwapActive] = useState(false);
+  const [hintWord, setHintWord] = useState<string | null>(null);
+  const [hintDefinition, setHintDefinition] = useState<string | null>(null);
+  const [isDefinitionLoading, setIsDefinitionLoading] = useState(false);
+  const [usedHints, setUsedHints] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (hintWord && hintActiveSeconds === 0 && hintRevealLeft === 0) {
+      setHintWord(null);
+      setHintDefinition(null);
+    }
+  }, [hintActiveSeconds, hintRevealLeft, hintWord]);
+
+  const playSfx = useCallback((type: keyof typeof SOUNDS) => {
+    if (type === 'bg') return;
+    const audio = new Audio(SOUNDS[type]);
+    audio.volume = sfxVolume;
+    audio.play().catch(() => { });
+
+    // Вибрация при звуковых эффектах (успех/ошибка)
+    if (type === 'success' || type === 'rare_success') tg?.HapticFeedback?.notificationOccurred('success');
+    if (type === 'error') tg?.HapticFeedback?.notificationOccurred('error');
+    if (type === 'bonus') tg?.HapticFeedback?.impactOccurred('medium');
+  }, [sfxVolume, tg]);
+
+
+  /* --- BACKGROUND MUSIC LOGIC --- */
+
+  useEffect(() => {
+    if (!bgMusicRef.current) {
+      bgMusicRef.current = new Audio(SOUNDS.bg);
+      bgMusicRef.current.loop = true;
+      bgMusicRef.current.volume = musicVolume;
+    }
+  }, [musicVolume]);
+
+  useEffect(() => {
+    if (bgMusicRef.current) {
+      if (status === 'playing' && !isMenuOpen && !isAboutOpen && !isShopOpen) {
+        bgMusicRef.current.play().catch((e) => console.log("Audio play failed", e));
+      } else {
+        bgMusicRef.current.pause();
+        // Сбрасываем трек, если раунд закончен
+        if (status !== 'playing') {
+          bgMusicRef.current.currentTime = 0;
+        }
+      }
+    }
+  }, [status, isMenuOpen, isAboutOpen, isShopOpen]);
+
+  useEffect(() => {
+    if (bgMusicRef.current) bgMusicRef.current.volume = musicVolume;
+    localStorage.setItem('slovodel_music_vol', musicVolume.toString());
+  }, [musicVolume]);
+
+  useEffect(() => {
+    localStorage.setItem('slovodel_sfx_vol', sfxVolume.toString());
+  }, [sfxVolume]);
+
+  useEffect(() => {
+    loadDictionary().then(async () => {
+      setIsDictLoading(false);
+      // Загружаем дополнительные слова из Supabase
+      if (fetchCustomWords) {
+        const customWords = await fetchCustomWords();
+        const dict = getDictionary();
+        if (dict && customWords.length > 0) {
+          customWords.forEach((w: string) => dict.add(w));
+          console.log(`[Словарь] Добавлено ${customWords.length} новых слов из базы`);
+        }
+      }
+    });
+
+    // Поллинг активного испытания (каждые 30 секунд)
+    const checkChallenge = () => {
+      if (!getActiveChallenge) return;
+      getActiveChallenge().then((data: any) => {
+        if (data) {
+          setCurrentChallengeId(prev => (prev !== data.id ? data.id : prev));
+          
+          setChallengeLetters((prev: any) => {
+             if (JSON.stringify(prev) !== JSON.stringify(data.letters)) return data.letters;
+             return prev;
+          });
+          
+          setChallengeEndTime(prev => (prev !== data.endTime ? data.endTime : prev));
+        }
+      });
+    };
+
+    checkChallenge(); // Первый запуск
+    const interval = setInterval(checkChallenge, 30000); // Проверка каждые 30 сек
+    return () => clearInterval(interval);
+
+  }, [fetchCustomWords, getActiveChallenge]);
+
+  useEffect(() => {
+    localStorage.setItem('slovodel_total_score', totalScore.toString());
+    localStorage.setItem('slovodel_high_score', highScore.toString());
+    localStorage.setItem('slovodel_rare_words', JSON.stringify(rareWords));
+    localStorage.setItem('slovodel_daily_wins', dailyWins.toString());
+    localStorage.setItem('slovodel_total_words', totalWords.toString());
+  }, [totalScore, highScore, rareWords, dailyWins, totalWords]);
+
+  // Синхронизация бонусов с localStorage
+  useEffect(() => { localStorage.setItem('slovodel_bonus_time', bonusTimeLeft.toString()); }, [bonusTimeLeft]);
+  useEffect(() => { localStorage.setItem('slovodel_bonus_swap', bonusSwapLeft.toString()); }, [bonusSwapLeft]);
+  useEffect(() => { localStorage.setItem('slovodel_bonus_hint', bonusHintLeft.toString()); }, [bonusHintLeft]);
+  useEffect(() => { localStorage.setItem('slovodel_bonus_wildcard', bonusWildcardLeft.toString()); }, [bonusWildcardLeft]);
+
+  // Загрузка данных пользователя из БД при старте
+  useEffect(() => {
+    if (tgUser?.id && getUserData) {
+      getUserData(tgUser.id).then((data: any) => {
+        if (data) { // Существующий пользователь
+          // Полностью перезаписываем локальные данные данными из БД
+          setTotalScore(data.score ?? 0);
+          
+          // Бонусы (с фолбэком на случай, если в БД их еще нет)
+          setBonusTimeLeft(data.bonus_time ?? 3);
+          setBonusHintLeft(data.bonus_hint ?? 3);
+          setBonusSwapLeft(data.bonus_swap ?? 3);
+          setBonusWildcardLeft(data.bonus_wildcard ?? 3);
+
+          // Редкие слова
+          setRareWords(Array.isArray(data.rare_words) ? data.rare_words : []);
+
+          // Статистика
+          setDailyWins(data.daily_wins ?? 0);
+          setTotalWords(data.total_words ?? 0);
+
+        } else { // Новый пользователь (или первый запуск)
+          // Сбрасываем все значения до дефолтных, чтобы не использовать чужие данные из localStorage
+          setTotalScore(0);
+          setHighScore(0);
+          setRareWords([]);
+          setBonusTimeLeft(3);
+          setBonusHintLeft(3);
+          setBonusSwapLeft(3);
+          setBonusWildcardLeft(3);
+          setDailyWins(0);
+          setTotalWords(0);
+        }
+      });
+
+      // Загружаем актуальное состояние ежедневного испытания (бонусы)
+      if (getUserDailyScore) {
+        getUserDailyScore(tgUser.id, currentChallengeId).then((data: any) => {
+          if (data) {
+             setDailyStatus(prev => ({
+               ...prev,
+               challengeId: currentChallengeId,
+               scores: data.level_scores || prev.scores,
+               // Обновляем бонусы из базы, так как они надежнее локальных
+               bonuses: {
+                 time: data.bonus_time ?? 2,
+                 hint: data.bonus_hint ?? 2,
+                 swap: data.bonus_swap ?? 2,
+                 wildcard: data.bonus_wildcard ?? 2
+               }
+             }));
+          } else {
+             // Если данных нет, значит это новое испытание -> сбрасываем статус
+             setDailyStatus(prev => {
+                if (prev.challengeId !== currentChallengeId) {
+                    return {
+                        challengeId: currentChallengeId,
+                        scores: {},
+                        userId: tgUser.id,
+                        bonuses: { time: 2, hint: 2, swap: 2, wildcard: 2 }
+                    };
+                }
+                return prev;
+             });
+          }
+        });
+      }
+    }
+  }, [tgUser, getUserData, getUserDailyScore, currentChallengeId]);
+
+  const finishGame = useCallback(() => {
+    const finalScore = score;
+    const oldHighScore = highScore;
+    const newTotalScore = totalScore + finalScore;
+
+    // Проверяем повышение ранга
+    const oldRank = getUserRank(totalScore);
+    const newRank = getUserRank(newTotalScore);
+    if (oldRank !== newRank) {
+      setNewRankReached(newRank);
+    } else {
+      setNewRankReached(null);
+    }
+    
+    // Вычисляем новые победы сразу, чтобы сохранить актуальное значение
+    const newDailyWins = isDailyMode ? dailyWins + 1 : dailyWins;
+
+    setTotalScore(newTotalScore);
+    
+    // Определяем, какие бонусы сохранять (если играли дейлик, то сохраняем старые бонусы из рефа)
+    const bonusesToSave = isDailyMode ? userBonusesRef.current : {
+      time: bonusTimeLeft,
+      hint: bonusHintLeft,
+      swap: bonusSwapLeft,
+      wildcard: bonusWildcardLeft
+    };
+    
+    // Текущие бонусы дейлика для сохранения в daily_scores
+    const currentDailyBonuses = {
+      time: bonusTimeLeft,
+      hint: bonusHintLeft,
+      swap: bonusSwapLeft,
+      wildcard: bonusWildcardLeft
+    };
+
+    // Сохраняем очки и обрабатываем возможные ошибки (например, если нет интернета)
+    Promise.resolve(saveUserData({
+      telegramId: tgUser?.id,
+      username: USER_NAME,
+      score: newTotalScore,
+      bonuses: bonusesToSave,
+      avatarUrl: tgUser?.photo_url,
+      rareWords: rareWords,
+      dailyWins: newDailyWins,
+      totalWords: totalWords
+    })).catch((err: any) => {
+      console.error("Ошибка сохранения рекорда:", err);
+    });
+
+    if (finalScore > oldHighScore) {
+      setHighScore(finalScore);
+      setLastRoundRecordBeaten(finalScore - oldHighScore);
+    } else {
+      setLastRoundRecordBeaten(null);
+    }
+
+
+    const today = getDailyDateString();
+    if (!hasPlayedToday) {
+      const newStreak = streak + 1;
+      setStreak(newStreak);
+      setHasPlayedToday(true);
+      localStorage.setItem('slovodel_streak_count', newStreak.toString());
+      localStorage.setItem('slovodel_streak_date', today);
+
+      const title = getStreakTitle(newStreak);
+      if ([3, 7, 14, 30].includes(newStreak)) {
+        setStreakMilestone(title);
+      } else {
+        showToast('Твой внутренний филолог в огне! 🔥 Продолжай в том же духе!', 'good');
+      }
+    }
+
+    if (isDailyMode) {
+      const level = grid.length; // 10, 8 или 6
+      const newScores = { ...dailyStatus.scores, [level]: finalScore };
+      const info = { challengeId: currentChallengeId, scores: newScores, bonuses: currentDailyBonuses, userId: tgUser?.id };
+      
+      setDailyStatus(info);
+      localStorage.setItem('slovodel_daily_play_v2', JSON.stringify(info));
+      
+      setDailyWins(newDailyWins);
+      const totalDailyScore = Object.values(newScores).reduce((a, b) => a + b, 0);
+
+      // Сохраняем результат в таблицу ежедневного рейтинга
+      if (saveDailyScore && tgUser?.id) {
+        saveDailyScore({
+          telegramId: tgUser.id,
+          username: USER_NAME,
+          avatarUrl: tgUser.photo_url,
+          score: totalDailyScore,
+          challengeId: currentChallengeId,
+          bonuses: currentDailyBonuses,
+          levelScores: newScores
+        });
+      }
+    }
+
+    setShowConfirm(false);
+    setIsMenuOpen(false);
+
+    // Восстанавливаем бонусы пользователя после дейлика
+    if (isDailyMode) {
+      setBonusTimeLeft(userBonusesRef.current.time);
+      setBonusHintLeft(userBonusesRef.current.hint);
+      setBonusSwapLeft(userBonusesRef.current.swap);
+      setBonusWildcardLeft(userBonusesRef.current.wildcard);
+    }
+
+    setWildcardActiveSeconds(0);
+    setHintActiveSeconds(0);
+    setHintRevealLeft(0);
+    playSfx('bonus');
+
+    // Telegram MainButton на финише
+    if (tg) {
+      tg.MainButton.setText("В главное меню");
+      tg.MainButton.show();
+      const onMenuClick = () => {
+        setStatus('menu');
+        tg.MainButton.hide();
+        tg.MainButton.offClick(onMenuClick);
+      };
+      tg.MainButton.onClick(onMenuClick);
+      tg.disableClosingConfirmation();
+    }
+    setStatus('results');
+  }, [score, USER_NAME, saveUserData, saveDailyScore, highScore, totalScore, bonusTimeLeft, bonusHintLeft, bonusSwapLeft, bonusWildcardLeft, tgUser, rareWords, streak, hasPlayedToday, isDailyMode, playSfx, showToast, tg, dailyWins, totalWords, currentChallengeId]);
+
+  useEffect(() => {
+    let interval: number;
+    if (status === 'playing' && timeLeft > 0 && !isMenuOpen && !isAboutOpen && !isShopOpen && swapTargetIdx === null) {
+      interval = window.setInterval(() => {
+        setTimeLeft(t => t - 1);
+        setWildcardActiveSeconds(ws => Math.max(0, ws - 1));
+        
+        if (hintActiveSeconds > 0) {
+          setHintActiveSeconds(hs => hs - 1);
+        } else if (hintRevealLeft > 0) {
+          setHintRevealLeft(hr => hr - 1);
+        }
+      }, 1000);
+    } else if (timeLeft === 0 && status === 'playing') {
+      finishGame();
+    }
+    return () => clearInterval(interval);
+  }, [status, timeLeft, isMenuOpen, isAboutOpen, isShopOpen, finishGame, swapTargetIdx, hintActiveSeconds, hintRevealLeft]);
+
+  const startGame = (difficultyLevel: number, daily: boolean = false) => {
+    if (isDictLoading) return;
+    playSfx('click');
+    // Множитель теперь зависит от сложности и в обычном, и в ежедневном режиме
+    setMultiplier(difficultyLevel === 10 ? 1 : difficultyLevel === 8 ? 1.5 : 2);
+    setIsDailyMode(daily);
+    setIsDailyChallengeOpen(false);
+
+    if (daily) {
+      // Сохраняем текущие бонусы и выдаем фиксированный набор для дейлика
+      userBonusesRef.current = {
+        time: bonusTimeLeft,
+        hint: bonusHintLeft,
+        swap: bonusSwapLeft,
+        wildcard: bonusWildcardLeft
+      };
+      
+      // Если есть сохраненные бонусы для дейлика на сегодня — используем их, иначе даем по 2
+      const dailyBonuses = (dailyStatus.challengeId === currentChallengeId && dailyStatus.bonuses) 
+        ? dailyStatus.bonuses 
+        : { time: 2, hint: 2, swap: 2, wildcard: 2 };
+
+      setBonusTimeLeft(dailyBonuses.time);
+      setBonusHintLeft(dailyBonuses.hint);
+      setBonusSwapLeft(dailyBonuses.swap);
+      setBonusWildcardLeft(dailyBonuses.wildcard);
+    }
+
+    // Если это дейлик и у нас есть загруженные буквы - используем их
+    // Иначе генерируем новые (для обычной игры)
+    const startGrid = (daily && challengeLetters) 
+      ? challengeLetters[difficultyLevel] 
+      : generateGrid(difficultyLevel);
+
+    setGrid(startGrid);
+    setFoundWords([]);
+    setCurrentInput([]);
+    setScore(0);
+    setTimeLeft(60);
+    // Бонусы больше не сбрасываются здесь! Они берутся из общего инвентаря.
+    setWildcardActiveSeconds(0);
+    setHintActiveSeconds(0);
+    setHintRevealLeft(0);
+    setSwapTargetIdx(null);
+    setIsSwapActive(false);
+    setHintWord(null);
+    setHintDefinition(null);
+    setUsedHints(new Set());
+    setStatus('playing');
+
+    // Telegram Game Setup
+    tg?.enableClosingConfirmation();
+    tg?.MainButton.hide();
+  };
+
+  const hintIndices = useMemo(() => {
+    if (!hintWord) return new Set<number>();
+    const indices = new Set<number>();
+    const tempGrid = [...grid];
+    for (const char of hintWord.toLowerCase()) {
+      const idx = tempGrid.findIndex(l => l.toLowerCase() === char);
+      if (idx !== -1) {
+        indices.add(idx);
+        tempGrid[idx] = "USED";
+      }
+    }
+    return indices;
+  }, [hintWord, grid]);
+
+  const checkWord = () => {
+    const rawWord = currentInput.join('').toLowerCase();
+    const dictionary = getDictionary();
+    if (rawWord.length < 2) {
+      playSfx('error');
+      return showToast('Коротко!', 'bad');
+    }
+    let targetWord = rawWord;
+    let foundInDict = false;
+    if (rawWord.includes('*')) {
+      const regexStr = "^" + rawWord.replace(/\*/g, '.') + "$";
+      const regex = new RegExp(regexStr);
+      if (dictionary) {
+        const foundSet = new Set(foundWords.map(w => w.text.toLowerCase()));
+        for (const dictWord of dictionary) {
+          if (regex.test(dictWord) && !foundSet.has(dictWord)) {
+            targetWord = dictWord;
+            foundInDict = true;
+            break;
+          }
+        }
+      }
+    } else {
+      const word = rawWord.replace(/ё/g, 'е');
+      if (dictionary && dictionary.has(word)) foundInDict = true;
+    }
+    if (!rawWord.includes('*') && foundWords.some(w => w.text === targetWord)) {
+      playSfx('error');
+      showToast('Уже было!', 'bad');
+      setCurrentInput([]);
+      return;
+    }
+    if (foundInDict) {
+      const finalPoints = Math.round(targetWord.length * 10 * multiplier);
+
+      if (targetWord.length >= 7) {
+        playSfx('rare_success');
+        const lowerText = targetWord.toLowerCase();
+        const existingIndex = rareWords.findIndex(r => r.text === lowerText);
+
+        if (existingIndex === -1) {
+          showToast(`✨ НОВАЯ РЕДКОСТЬ: ${targetWord.toUpperCase()}!`, 'good');
+          setRareWords(prev => [...prev, { text: lowerText, length: targetWord.length, score: finalPoints }]);
+        } else {
+          if (finalPoints > rareWords[existingIndex].score) {
+            showToast(`🔥 РЕКОРД ОБНОВЛЕН: ${targetWord.toUpperCase()}!`, 'good');
+            setRareWords(prev => prev.map((w, i) => i === existingIndex ? { ...w, score: finalPoints } : w));
+          } else {
+            showToast(`🌟 РЕДКОЕ СЛОВО: ${targetWord.toUpperCase()}!`, 'good');
+          }
+        }
+      } else {
+        playSfx('success');
+        showToast(`+${finalPoints}`, 'good');
+      }
+
+      setFoundWords(prev => [{ text: targetWord, score: finalPoints }, ...prev]);
+      setScore(s => s + finalPoints);
+      setTotalWords(prev => prev + 1);
+
+      if (hintWord && targetWord === hintWord.toLowerCase()) {
+        setHintWord(null);
+        setHintDefinition(null);
+        setHintActiveSeconds(0);
+        setHintRevealLeft(0);
+      }
+      setCurrentInput([]);
+    } else {
+      playSfx('error');
+      showToast('Нет такого слова', 'bad');
+      setCurrentInput([]);
+    }
+  };
+
+  const openGlobalRanking = async (initialTab: 'all' | 'daily' | 'previous' = 'all') => {
+    playSfx('click');
+    setShowGlobalRanking(true);
+    setLeaderboardTab(initialTab);
+    setGlobalData([]);
+    setCurrentUserRank(null);
+    setTotalPlayersCount(0);
+    setIsLeaderboardLoading(true);
+
+    try {
+      if (initialTab === 'all') {
+        const { players, count } = await getLeaderboard();
+        setGlobalData(players);
+        setTotalPlayersCount(count);
+
+        if (tgUser?.id && fetchUserRank) {
+          const isPlayerInTop = players.some((player: any) => player.telegram_id === tgUser.id);
+          if (!isPlayerInTop) {
+            const rankData = await fetchUserRank(tgUser.id);
+            if (rankData) {
+              setCurrentUserRank(rankData);
+            }
+          }
+        }
+      } else if (initialTab === 'daily') {
+        const { players, count } = await getDailyLeaderboard(currentChallengeId);
+        setGlobalData(players);
+        setTotalPlayersCount(count);
+      } else {
+        const { players, count } = await fetchPreviousDailyLeaderboard(currentChallengeId);
+        setGlobalData(players);
+        setTotalPlayersCount(count);
+      }
+    } finally {
+      setIsLeaderboardLoading(false);
+    }
+  };
+
+  const handleLeaderboardTabChange = async (tab: 'all' | 'daily' | 'previous') => {
+    playSfx('click');
+    setLeaderboardTab(tab);
+    setGlobalData([]);
+    setCurrentUserRank(null);
+    setTotalPlayersCount(0);
+    setIsLeaderboardLoading(true);
+
+    try {
+      if (tab === 'all') {
+        const { players, count } = await getLeaderboard();
+        setGlobalData(players);
+        setTotalPlayersCount(count);
+        // Логика ранга для общего рейтинга уже есть выше, можно вынести в функцию
+      } else if (tab === 'daily') {
+        const { players, count } = await getDailyLeaderboard(currentChallengeId);
+        setGlobalData(players);
+        setTotalPlayersCount(count);
+        // Для ежедневного рейтинга ранг можно не показывать отдельно, или реализовать get_daily_player_rank в SQL
+      } else {
+        const { players, count } = await fetchPreviousDailyLeaderboard(currentChallengeId);
+        setGlobalData(players);
+        setTotalPlayersCount(count);
+      }
+    } finally {
+      setIsLeaderboardLoading(false);
+    }
+  };
+
+  const handleAddTime = () => {
+    if (bonusTimeLeft <= 0) return;
+    playSfx('bonus');
+    setBonusTimeLeft(prev => prev - 1);
+    setTimeLeft(prev => prev + 15);
+    showToast('+15 секунд!', 'good');
+  };
+
+  const handleWildcard = () => {
+    if (wildcardActiveSeconds > 0) {
+      if (currentInput.includes('*')) { playSfx('error'); return; }
+      playSfx('click');
+      setCurrentInput(prev => [...prev, '*']);
+      return;
+    }
+    if (bonusWildcardLeft <= 0) return;
+    playSfx('bonus');
+    setBonusWildcardLeft(prev => prev - 1);
+    setWildcardActiveSeconds(15);
+    setCurrentInput(prev => [...prev, '*']);
+    showToast('Джокер активен!', 'good');
+  };
+
+  //Поиск определения слова
+  const fetchWordDefinition = async (word: string) => {
+    setIsDefinitionLoading(true);
+    try {
+      // 1. Запрашиваем содержимое страницы через revisions
+      // redirects=1 автоматически перенаправит с "Арбуз" на "арбуз"
+      const url = `https://ru.wiktionary.org/w/api.php?action=query&prop=revisions&rvprop=content&rvslots=main&titles=${encodeURIComponent(word.toLowerCase())}&redirects=1&format=json&origin=*`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      const pages = data.query.pages;
+      const pageId = Object.keys(pages)[0];
+
+      if (pageId === "-1") {
+        setHintDefinition("Слово не найдено в словаре.");
+        return;
+      }
+
+      // Получаем текст всей страницы
+      const wikitext = pages[pageId].revisions[0].slots.main["*"];
+
+      // 2. Ищем строку определения. В Викисловаре это строка, начинающаяся с "# "
+      // Регулярное выражение ищет первую такую строку
+      const match = wikitext.match(/#\s*([^{#\n][^#\n]+)/);
+
+      if (match && match[1]) {
+        let definition = match[1]
+          .replace(/\[\[|\]\]/g, "") // Убираем ссылки [[слово]]
+          .replace(/\{\{[^}]+\}\}/g, "") // Убираем шаблоны {{значение|...}}
+          .replace(/''+/g, "") // Убираем курсив/жирный текст
+          .trim();
+
+        // Если после очистки что-то осталось, берем первое предложение
+        if (definition) {
+          setHintDefinition(definition.split('.')[0] + ".");
+        } else {
+          setHintDefinition("Значение найдено, но его сложно отобразить кратко.");
+        }
+      } else {
+        setHintDefinition("Не удалось извлечь краткое определение.");
+      }
+    } catch (e) {
+      console.error("Ошибка словаря:", e);
+      setHintDefinition("Ошибка подключения к Викисловарю.");
+    } finally {
+      setIsDefinitionLoading(false);
+    }
+  };
+
+  const handleHint = async () => {
+    if (bonusHintLeft <= 0) return;
+    const dictionary = getDictionary();
+    if (!dictionary) return;
+
+    const availableStr = grid.join('').toLowerCase();
+    const possibleWords: string[] = [];
+    const foundSet = new Set(foundWords.map(w => w.text.toLowerCase()));
+
+    // Сохраняем текущую подсказку в нижнем регистре для сравнения
+    const currentHintLower = hintWord?.toLowerCase();
+
+    for (const word of dictionary) {
+      // ДОБАВЛЕНО УСЛОВИЕ: word !== currentHintLower
+      // Это исключает текущее слово-подсказку из списка кандидатов
+      if (word.length < 3 || word.length > 5 || foundSet.has(word) || word === currentHintLower || usedHints.has(word)) continue;
+
+      let tempPool = availableStr;
+      let possible = true;
+      for (const char of word) {
+        const idx = tempPool.indexOf(char);
+        if (idx === -1) { possible = false; break; }
+        tempPool = tempPool.substring(0, idx) + tempPool.substring(idx + 1);
+      }
+      if (possible) possibleWords.push(word);
+    }
+
+    if (possibleWords.length > 0) {
+      playSfx('bonus');
+
+      // Сортируем по длине (как в вашем оригинальном коде)
+      possibleWords.sort((a, b) => b.length - a.length);
+
+      // Берем самое длинное из доступных (которое не является текущим)
+      let nextHint = possibleWords[0];
+
+      setUsedHints(prev => new Set(prev).add(nextHint));
+      setHintWord(nextHint.toUpperCase());
+      setHintDefinition(null);
+      setBonusHintLeft(prev => prev - 1);
+      setHintActiveSeconds(20);
+      setHintRevealLeft(5);
+      showToast('Другое слово!', 'good');
+      fetchWordDefinition(nextHint);
+    } else {
+      playSfx('error');
+      showToast('Других слов нет', 'bad');
+    }
+  };
+
+  const toggleSwapMode = () => {
+    if (bonusSwapLeft <= 0) return;
+    if (hintActiveSeconds > 0) {
+      playSfx('error');
+      showToast('Нельзя менять буквы во время подсказки!', 'bad');
+      return;
+    }
+    playSfx('click');
+    if (!isSwapActive) {
+      showToast('Выберите букву, для замены', 'good');
+    }
+    setIsSwapActive(!isSwapActive);
+  };
+
+  const startSwap = (idx: number) => {
+    playSfx('click');
+    setSwapTargetIdx(idx);
+    setIsSwapActive(false);
+  };
+
+  const performSwap = (newChar: string) => {
+    if (swapTargetIdx === null) return;
+    const char = newChar.toUpperCase();
+    if (!/[А-ЯЁ]/.test(char)) {
+      if (char.length > 0) {
+        playSfx('error');
+        showToast('Только кириллица!', 'bad');
+      }
+      return;
+    }
+    if (grid.includes(char)) {
+      playSfx('error');
+      showToast('Такая буква уже есть!', 'bad');
+      return;
+    }
+
+    playSfx('bonus');
+    const newGrid = [...grid];
+    newGrid[swapTargetIdx] = char;
+    setGrid(newGrid);
+    setBonusSwapLeft(prev => prev - 1);
+    setSwapTargetIdx(null);
+  };
+
+  const isCurrentChallenge = dailyStatus.challengeId === currentChallengeId;
+  const dailyLevelsDone = isCurrentChallenge && dailyStatus.scores ? Object.keys(dailyStatus.scores).map(Number) : [];
+  const isDailyFullComplete = isCurrentChallenge && [10, 8, 6].every(l => dailyStatus.scores && Object.prototype.hasOwnProperty.call(dailyStatus.scores, l));
+  const currentDailyScore = isCurrentChallenge && dailyStatus.scores ? Object.values(dailyStatus.scores).reduce((a, b) => a + b, 0) : 0;
+
+  if (isDictLoading) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center p-6">
+        <div className="spinner w-12 h-12 text-indigo-600 mb-4 border-4 border-indigo-200 border-t-indigo-600 rounded-full"></div>
+        <h2 className="text-xl font-bold uppercase">СЛОВОДЕЛ</h2>
+        <p className="text-sm opacity-50 mt-2">Готовим буквы...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full w-full max-w-md mx-auto flex flex-col relative overflow-hidden shadow-2xl transition-colors duration-300 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-200 via-purple-200 to-pink-200 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900 text-gray-900 dark:text-white font-sans selection:bg-pink-500/30">
+      {isMenuOpen && (
+        <SettingsMenu
+          musicVolume={musicVolume} setMusicVolume={setMusicVolume}
+          sfxVolume={sfxVolume} setSfxVolume={setSfxVolume}
+          theme={theme} setTheme={setTheme}
+          onClose={() => setIsMenuOpen(false)}
+          onExit={() => setShowConfirm(true)}
+          playSfx={playSfx}
+          showExitButton={status === 'playing'}
+          isAdmin={tgUser?.id === ADMIN_ID}
+          onOpenAdmin={() => { setIsMenuOpen(false); setIsAdminPanelOpen(true); }}
+        />
+      )}
+      {isAboutOpen && (
+        <AboutSection 
+          onClose={() => setIsAboutOpen(false)} 
+          playSfx={playSfx} 
+          bonuses={{
+            time: bonusTimeLeft,
+            hint: bonusHintLeft,
+            swap: bonusSwapLeft,
+            wildcard: bonusWildcardLeft
+          }}
+          onOpenShop={() => { setIsAboutOpen(false); setShopPreviousScreen('about'); setIsShopOpen(true); }}
+          showRanks={status !== 'playing'}
+          onSubmitFeedback={(msg) => saveFeedback && saveFeedback({
+            telegramId: tgUser?.id,
+            username: USER_NAME,
+            message: msg
+          })}
+          isDailyMode={isDailyMode}
+        />
+      )}
+      {isAchievementsOpen && (
+        <AchievementsModal 
+          onClose={() => setIsAchievementsOpen(false)} 
+          playSfx={playSfx}
+          username={USER_NAME}
+          avatarUrl={tgUser?.photo_url}
+          rank={getUserRank(totalScore)}
+          totalScore={totalScore}
+          highScore={highScore}
+          streak={streak}
+          dailyWins={dailyWins}
+          totalWords={totalWords}
+          rareWordsCount={rareWords.length}
+          bonuses={{
+            time: bonusTimeLeft,
+            hint: bonusHintLeft,
+            swap: bonusSwapLeft,
+            wildcard: bonusWildcardLeft
+          }}
+          onOpenShop={() => { setIsAchievementsOpen(false); setShopPreviousScreen('achievements'); setIsShopOpen(true); }}
+        />
+      )}
+      {showCollection && <CollectionModal words={rareWords} onClose={() => setShowCollection(false)} playSfx={playSfx} />}
+      {isShopOpen && <ShopModal onClose={() => { 
+        setIsShopOpen(false); 
+        if (shopPreviousScreen === 'about') setIsAboutOpen(true);
+        else if (shopPreviousScreen === 'achievements') setIsAchievementsOpen(true);
+      }} playSfx={playSfx} />}
+      {isAdminPanelOpen && (
+        <AdminPanelModal 
+          onClose={() => setIsAdminPanelOpen(false)} 
+          playSfx={playSfx} 
+          fetchFeedbacks={fetchFeedbacks} 
+          addCustomWord={(w) => addCustomWord(w, tgUser?.id)}
+          fetchAdminCustomWords={fetchAdminCustomWords}
+          deleteCustomWord={deleteCustomWord}
+          updateCustomWord={updateCustomWord}
+          onReply={sendFeedbackReply}
+          onArchive={archiveFeedback}
+          onDelete={deleteFeedback}
+        />
+      )}
+      {isDailyChallengeOpen && (
+        <DailyChallengeModal 
+          onClose={() => setIsDailyChallengeOpen(false)}
+          onStart={(level) => startGame(level, true)}
+          playSfx={playSfx}
+          completedLevels={dailyLevelsDone}
+        />
+      )}
+      {showGlobalRanking && <LeaderboardModal
+        data={globalData}
+        onClose={() => setShowGlobalRanking(false)}
+        playSfx={playSfx}
+        currentUserId={tgUser?.id}
+        currentUserRankData={currentUserRank}
+        userScore={leaderboardTab === 'all' ? totalScore : currentDailyScore}
+        totalPlayers={totalPlayersCount}
+        getUserRank={getUserRank}
+        activeTab={leaderboardTab}
+        onTabChange={handleLeaderboardTabChange}
+        isLoading={isLeaderboardLoading}
+      />}
+
+      {status === 'menu' && (
+        <MainMenu
+          streak={streak}
+          streakMilestone={streakMilestone}
+          setStreakMilestone={setStreakMilestone}
+          hasPlayedToday={hasPlayedToday}
+          openGlobalRanking={() => openGlobalRanking('all')}
+          openAchievements={() => setIsAchievementsOpen(true)}
+          playSfx={playSfx}
+          setShowCollection={setShowCollection}
+          onOpenAbout={() => setIsAboutOpen(true)}
+          setIsMenuOpen={setIsMenuOpen}
+          userName={USER_NAME}
+          totalScore={totalScore}
+          highScore={highScore}
+          isDailyPlayedToday={isDailyFullComplete}
+          startGame={startGame}
+          openDailyChallenge={() => isDailyFullComplete ? openGlobalRanking('daily') : setIsDailyChallengeOpen(true)}
+          dailyScore={currentDailyScore}
+          challengeId={currentChallengeId}
+          challengeEndTime={challengeEndTime}
+        />
+      )}
+
+      {status === 'results' && (
+        <ResultsScreen
+          score={score}
+          lastRoundRecordBeaten={lastRoundRecordBeaten}
+          totalScore={totalScore}
+          userName={USER_NAME}
+          onMenu={() => { 
+            setStatus('menu'); 
+            tg?.MainButton.hide();
+            if (isDailyMode) {
+              if (!isDailyFullComplete) {
+                setIsDailyChallengeOpen(true);
+              }
+              setIsDailyMode(false);
+            }
+          }}
+          newRankReached={newRankReached}
+        />
+      )}
+
+      {status === 'playing' && (
+        <GameScreen
+          score={score}
+          isDailyMode={isDailyMode}
+          timeLeft={timeLeft}
+          onOpenAbout={() => setIsAboutOpen(true)}
+          onOpenMenu={() => setIsMenuOpen(true)}
+          hintWord={hintWord}
+          isDefinitionLoading={isDefinitionLoading}
+          hintDefinition={hintDefinition}
+          foundWords={foundWords}
+          currentInput={currentInput}
+          setCurrentInput={setCurrentInput}
+          playSfx={playSfx}
+          handleAddTime={handleAddTime}
+          bonusTimeLeft={bonusTimeLeft}
+          handleHint={handleHint}
+          bonusHintLeft={bonusHintLeft}
+          handleWildcard={handleWildcard}
+          bonusWildcardLeft={bonusWildcardLeft}
+          wildcardActiveSeconds={wildcardActiveSeconds}
+          hintActiveSeconds={hintActiveSeconds}
+          toggleSwapMode={toggleSwapMode}
+          bonusSwapLeft={bonusSwapLeft}
+          isSwapActive={isSwapActive}
+          grid={grid}
+          hintIndices={hintIndices}
+          startSwap={startSwap}
+          checkWord={checkWord}
+          performSwap={performSwap}
+          swapTargetIdx={swapTargetIdx}
+          setSwapTargetIdx={setSwapTargetIdx}
+          message={message}
+          showConfirm={showConfirm}
+          setShowConfirm={setShowConfirm}
+          finishGame={finishGame}
+          setGrid={setGrid}
+          onOpenShop={() => { setShopPreviousScreen(null); setIsShopOpen(true); }}
+        />
+      )}
+    </div>
+  );
+}

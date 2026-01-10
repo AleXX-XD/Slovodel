@@ -1,5 +1,8 @@
-// Используем проверенный и стабильный источник (Harrix Russian Nouns)
-const DICTIONARY_URL = "https://raw.githubusercontent.com/Harrix/Russian-Nouns/master/dist/russian_nouns.txt";
+// Используем проверенный источник (Harrix Russian Nouns).
+// Чтобы добавить больше слов, создайте файл words.txt в папке public и добавьте сюда строку "./words.txt"
+const DICTIONARY_URLS = [
+  "./words.txt"
+];
 
 let dictionaryCache: Set<string> | null = null;
 
@@ -7,21 +10,26 @@ export const loadDictionary = async (): Promise<Set<string>> => {
   if (dictionaryCache) return dictionaryCache;
 
   try {
-    // Используем mode: 'cors' и cache: 'default' для надежности
-    const response = await fetch(DICTIONARY_URL, {
-      method: 'GET',
-      headers: { 'Accept': 'text/plain' }
-    });
-    
-    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-    
-    const text = await response.text();
-    if (!text || text.length < 100) throw new Error("Received empty or corrupt dictionary");
+    // Загружаем все словари параллельно
+    const promises = DICTIONARY_URLS.map(url => 
+      fetch(url).then(res => {
+        if (!res.ok) throw new Error(`Failed to load ${url}`);
+        return res.text();
+      }).catch(e => {
+        console.warn(`Ошибка загрузки словаря ${url}:`, e);
+        return ""; // Если один словарь упал, продолжаем с другими
+      })
+    );
 
-    // Разбиваем текст по строкам, убираем пустые, переводим в нижний регистр и заменяем ё на е
-    const words = text.split(/\r?\n/)
+    const texts = await Promise.all(promises);
+    const combinedText = texts.join('\n');
+
+    if (!combinedText || combinedText.length < 100) throw new Error("Все словари недоступны");
+
+    // Разбиваем, чистим, фильтруем (оставляем только кириллицу)
+    const words = combinedText.split(/\r?\n/)
       .map(w => w.trim().toLowerCase().replace(/ё/g, 'е'))
-      .filter(w => w.length > 1);
+      .filter(w => w.length > 1 && /^[а-я]+(-[а-я]+)*$/.test(w));
     
     dictionaryCache = new Set(words);
     console.log(`Словарь успешно загружен: ${dictionaryCache.size} слов`);
