@@ -119,14 +119,15 @@ def run_game_cycle():
                 else:
                     msg += f"\nСпасибо за участие! Новое испытание уже началось!"
                 
-                # Отправка в Telegram
-                try:
-                    requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={
-                        "chat_id": player['telegram_id'],
-                        "text": msg
-                    })
-                except Exception as e:
-                    print(f"Ошибка отправки сообщения игроку {player['telegram_id']}: {e}")
+                # Отправка в Telegram (ТОЛЬКО ПОБЕДИТЕЛЯМ, чтобы не перегружать скрипт)
+                if rank <= 3:
+                    try:
+                        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={
+                            "chat_id": player['telegram_id'],
+                            "text": msg
+                        }, timeout=5) # Добавлен таймаут 5 секунд
+                    except Exception as e:
+                        print(f"Ошибка отправки сообщения игроку {player['telegram_id']}: {e}")
         
         # 4. Генерируем и создаем НОВОЕ испытание
         new_letters = {

@@ -6,6 +6,11 @@ on:
     - cron: '*/30 * * * *'
   workflow_dispatch: # Позволяет запускать вручную кнопку в интерфейсе GitHub
 
+# Предотвращает запуск нескольких скриптов одновременно (если старый завис, он будет отменен)
+concurrency:
+  group: game-manager
+  cancel-in-progress: true
+
 jobs:
   run-game-manager:
     runs-on: ubuntu-latest
