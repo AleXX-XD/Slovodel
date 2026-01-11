@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import './App.css';
 import App from './App'; 
 // Используем установленный пакет вместо URL
 import { createClient } from '@supabase/supabase-js';
@@ -24,8 +23,10 @@ const saveUserData = async (data: {
   bonuses: { time: number; hint: number; swap: number; wildcard: number };
   avatarUrl?: string;
   rareWords: any[];
-  dailyWins: number;
   totalWords: number;
+  highScore: number;
+  daysPlayed: number;
+  streak: number;
 }) => {
   if (!data.telegramId) {
     console.warn("Нет Telegram ID, данные не будут сохранены в облако.");
@@ -44,8 +45,10 @@ const saveUserData = async (data: {
       bonus_swap: data.bonuses.swap,
       bonus_wildcard: data.bonuses.wildcard,
       rare_words: data.rareWords,
-      daily_wins: data.dailyWins,
       total_words: data.totalWords,
+      high_score: data.highScore,
+      days_played: data.daysPlayed,
+      streak: data.streak,
       updated_at: new Date() 
     }, { onConflict: 'telegram_id' });
 
@@ -132,11 +135,14 @@ const fetchUserData = async (telegramId: number) => {
       .eq('telegram_id', telegramId)
       .single();
     
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = запись не найдена (новый игрок)
+    if (error) {
+      if (error.code === 'PGRST116') return null; // Игрок не найден (это нормально для новичка)
+      throw error; // Другая ошибка (сеть и т.д.) - пробрасываем её!
+    }
     return data;
   } catch (e) {
     console.error("Ошибка загрузки профиля:", e);
-    return null;
+    throw e; // Пробрасываем ошибку дальше, чтобы App.tsx не подумал, что это новый игрок
   }
 };
 

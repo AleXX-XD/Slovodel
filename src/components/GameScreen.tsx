@@ -51,12 +51,12 @@ export const GameScreen = (props: GameScreenProps) => {
   } = props;
 
   return (
-    <div className="h-full w-full max-w-md mx-auto flex flex-col relative overflow-hidden">
+    <div className="h-[100dvh] w-full max-w-md mx-auto flex flex-col overflow-hidden relative">
       {/* Модалка замены */}
       {swapTargetIdx !== null && (
-        <div className="fixed inset-0 bg-black/60 z-[150] flex flex-col items-center justify-center p-6 backdrop-blur-md">
-          <div className="bg-white/80 dark:bg-white/10 backdrop-blur-xl rounded-3xl p-8 w-full text-center animate-pop max-w-[280px] shadow-2xl border border-white/20">
-            <h3 className="text-xl font-black text-indigo-600 uppercase">Замена</h3>
+        <div className="modal-overlay z-[60]">
+          <div className="modal-content">
+            <h3 className="modal-title text-indigo-600 dark:text-indigo-400">Замена</h3>
             <p className="text-xs opacity-60 mt-2 text-gray-600 dark:text-white">Введите букву:</p>
             <input
               autoFocus
@@ -105,7 +105,7 @@ export const GameScreen = (props: GameScreenProps) => {
       </div>
 
       {/* Игровая панель */}
-      <div className="bg-white/60 dark:bg-white/10 backdrop-blur-xl p-4 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.3)] z-30 border-t border-white/40 dark:border-white/10 shrink-0">
+      <div className="mt-auto w-full bg-white/60 dark:bg-white/10 backdrop-blur-xl p-4 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.3)] z-30 border-t border-white/40 dark:border-white/10 shrink-0">
         {/* Бонусы */}
         <div className="mb-5 flex justify-around items-center">
           {[
@@ -149,7 +149,7 @@ export const GameScreen = (props: GameScreenProps) => {
         {/* Сетка букв */}
         <div className={`grid ${grid.length === 10 ? 'grid-cols-5' : grid.length === 8 ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mb-4`}>
           {grid.map((letter, idx) => (
-            <button key={idx} onClick={() => { if (isSwapActive) startSwap(idx); else { playSfx('click'); setCurrentInput(p => [...p, letter]); } }} className={`${grid.length === 10 ? 'aspect-square' : grid.length === 8 ? 'aspect-[5/4]' : 'aspect-[5/3]'} rounded-2xl font-black text-2xl flex items-center justify-center transition-all active:scale-95 shadow-lg backdrop-blur-sm border-2 border-white/40 dark:border-white/10 ${hintIndices.has(idx) ? 'bg-amber-400 dark:bg-amber-500/80 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'bg-white/60 dark:bg-white/10 text-gray-800 dark:text-white hover:bg-white/80 dark:hover:bg-white/20'}`}>{letter}</button>
+            <button key={idx} onClick={() => { if (isSwapActive) startSwap(idx); else { playSfx('click'); setCurrentInput(p => [...p, letter]); } }} className={`${grid.length === 10 ? 'aspect-square' : grid.length === 8 ? 'aspect-[5/4]' : 'aspect-[5/3]'} letter-btn ${hintIndices.has(idx) ? 'letter-btn-hint' : ''}`}>{letter}</button>
           ))}
         </div>
 
@@ -168,9 +168,9 @@ export const GameScreen = (props: GameScreenProps) => {
       )}
 
       {showConfirm && (
-        <div className="fixed inset-0 bg-black/60 z-[250] flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white/80 dark:bg-white/10 backdrop-blur-xl rounded-3xl p-6 w-full max-w-[280px] text-center shadow-2xl border border-white/20 animate-pop">
-            <h3 className="font-bold mb-6 text-gray-900 dark:text-white text-lg">Завершить раунд?</h3>
+        <div className="modal-overlay z-[70]">
+          <div className="modal-content">
+            <h3 className="modal-title">Завершить раунд?</h3>
             <div className="flex gap-3">
               <button onClick={() => { playSfx('click'); setShowConfirm(false); }} className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl font-bold">Нет</button>
               <button onClick={() => { playSfx('click'); finishGame(); }} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold shadow-lg shadow-red-500/30">Да</button>

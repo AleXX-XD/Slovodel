@@ -8,5 +8,6 @@ export const SOUNDS = {
   success: './sound/Succes.mp3',
   error: './sound/Error.mp3',
   bonus: './sound/Podskazka.mp3',
-  rare_success: './sound/Redkoe_slovo.mp3'
+  rare_success: './sound/Redkoe_slovo.mp3',
+  reward_fanfare: './sound/Redkoe_slovo.mp3'
 };

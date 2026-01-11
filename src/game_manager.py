@@ -106,12 +106,19 @@ def run_game_cycle():
                     user_data = supabase.table("leaderboard").select("*").eq("telegram_id", player['telegram_id']).single().execute()
                     if user_data.data:
                         u = user_data.data
-                        supabase.table("leaderboard").update({
+                        
+                        update_data = {
                             "bonus_time": (u.get('bonus_time', 0) or 0) + bonus_amount,
                             "bonus_hint": (u.get('bonus_hint', 0) or 0) + bonus_amount,
                             "bonus_swap": (u.get('bonus_swap', 0) or 0) + bonus_amount,
                             "bonus_wildcard": (u.get('bonus_wildcard', 0) or 0) + bonus_amount
-                        }).eq("telegram_id", player['telegram_id']).execute()
+                        }
+
+                        if rank == 1: update_data["daily_1_place"] = (u.get('daily_1_place', 0) or 0) + 1
+                        elif rank == 2: update_data["daily_2_place"] = (u.get('daily_2_place', 0) or 0) + 1
+                        elif rank == 3: update_data["daily_3_place"] = (u.get('daily_3_place', 0) or 0) + 1
+
+                        supabase.table("leaderboard").update(update_data).eq("telegram_id", player['telegram_id']).execute()
                         reward_text = f"\n\n🎁 ВАША НАГРАДА:\nПо {bonus_amount} шт. каждой подсказки!"
 
                 # Текст сообщения

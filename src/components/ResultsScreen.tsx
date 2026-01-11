@@ -8,9 +8,10 @@ interface ResultsScreenProps {
   userName: string;
   onMenu: () => void;
   newRankReached: string | null;
+  onRankModalClose: () => void;
 }
 
-export const ResultsScreen = ({ score, lastRoundRecordBeaten, totalScore, userName, onMenu, newRankReached }: ResultsScreenProps) => {
+export const ResultsScreen = ({ score, lastRoundRecordBeaten, totalScore, userName, onMenu, newRankReached, onRankModalClose }: ResultsScreenProps) => {
   const [showRankModal, setShowRankModal] = useState(!!newRankReached);
 
   const getProgress = (s: number) => {
@@ -25,11 +26,11 @@ export const ResultsScreen = ({ score, lastRoundRecordBeaten, totalScore, userNa
   };
 
   return (
-    <div className="h-full w-full max-w-md mx-auto p-6 flex flex-col items-center justify-center animate-pop relative">
+    <div className="h-full w-full max-w-md mx-auto p-6 flex flex-col items-center justify-center elative">
       {/* Модальное окно повышения ранга */}
       {showRankModal && newRankReached && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-6 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl border border-white/20 relative overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl border border-white/20 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
             <img src="./image/crown.png" alt="Rank Up" className="w-24 h-24 mx-auto mb-4 animate-bounce object-contain" />
             <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-600 uppercase tracking-tight mb-2">Повышение!</h2>
@@ -38,7 +39,7 @@ export const ResultsScreen = ({ score, lastRoundRecordBeaten, totalScore, userNa
               <p className="text-xl font-black text-indigo-600 dark:text-indigo-300 uppercase tracking-widest">{newRankReached}</p>
             </div>
             <button 
-              onClick={() => setShowRankModal(false)}
+              onClick={() => { setShowRankModal(false); onRankModalClose(); }}
               className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-all uppercase tracking-wider"
             >
               Отлично!

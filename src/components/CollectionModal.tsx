@@ -19,45 +19,45 @@ export const CollectionModal = ({ words, onClose, playSfx }: CollectionModalProp
   });
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-[400] flex items-center justify-center p-4 backdrop-blur-md">
-      <div className="bg-white/80 dark:bg-white/10 backdrop-blur-xl rounded-3xl w-full max-w-sm h-[80vh] flex flex-col overflow-hidden shadow-2xl animate-pop border border-white/20 relative">
-        <div className="bg-white/50 dark:bg-white/5 p-6 text-gray-900 dark:text-white shrink-0 border-b border-white/10">
-          <div className="flex justify-between items-start">
+    <div className="modal-overlay z-[400]">
+      <div className="modal-content max-w-sm text-left flex flex-col max-h-[85vh]">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6 shrink-0">
+          <div className="flex items-center gap-3">
+            <BookOpenText size={28} className="modal-header-icon" />
             <div>
-              <h2 className="text-2xl font-black uppercase tracking-tight flex items-center gap-2">
-                <BookOpenText className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-                Моя коллекция
-              </h2>
-              <p className="text-xs font-bold opacity-60 uppercase tracking-widest mt-1">Собрано редкостей: {words.length}</p>
+              <h2 className="text-xl font-black uppercase tracking-tight">Моя коллекция</h2>
+              <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Собрано редкостей: {words.length}</p>
             </div>
-            <button onClick={() => { playSfx('click'); onClose(); }} className="p-2 bg-black/5 dark:bg-white/10 rounded-xl hover:bg-black/10 dark:hover:bg-white/20 transition-colors">
-              <X size={24} />
-            </button>
           </div>
+          <button onClick={() => { playSfx('click'); onClose(); }} className="modal-close-btn">
+            <X size={24} className="modal-icon" />
+          </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-3">
+        <div className="about-scroll-container">
           {sortedWords.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-40 text-gray-900 dark:text-white">
-              <BookOpenText size={64} strokeWidth={1} />
-              <p className="font-bold italic">Тут пока тишина... Твои редкие слова всё ещё прячутся в словаре!</p>
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-10 opacity-60">
+              <BookOpenText size={64} strokeWidth={1} className="text-gray-400 dark:text-gray-600" />
+              <p className="empty-state-text">Тут пока тишина...<br/>Твои редкие слова всё ещё прячутся в словаре!</p>
             </div>
           ) : (
             sortedWords.map((word, i) => (
-              <div key={i} className="p-4 rounded-2xl flex justify-between items-center animate-pop shadow-sm border bg-white/40 dark:bg-white/5 border-white/20 dark:border-white/10">
-                <div className="flex flex-col">
-                  <span className="text-xl font-black text-indigo-600 dark:text-indigo-300 uppercase tracking-wider leading-none">{word.text}</span>
-                  <span className="text-[10px] font-bold opacity-50 uppercase mt-1 text-gray-600 dark:text-gray-300">{word.length} букв</span>
+              <div key={i} className="collection-item animate-pop">
+                <div className="flex flex-col text-left">
+                  <span className="collection-word">{word.text}</span>
+                  <span className="collection-meta">{word.length} букв</span>
                 </div>
-                <div className="bg-indigo-100 dark:bg-indigo-500/20 px-3 py-1 rounded-full">
-                  <span className="text-sm font-black text-indigo-600 dark:text-indigo-300">+{word.score}</span>
+                <div className="collection-score">
+                  +{word.score}
                 </div>
               </div>
             ))
           )}
         </div>
 
-        <div className="p-4 bg-white/30 dark:bg-black/20 text-center text-[10px] uppercase font-black tracking-widest opacity-30 shrink-0 text-gray-900 dark:text-white">
+        <div className="mt-4 text-center opacity-30 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 shrink-0">
           Словарь эрудита
         </div>
       </div>

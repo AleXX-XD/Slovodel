@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { GameStatus, WordEntry } from './types';
 import { loadDictionary, getDictionary } from './utils/dictionary';
 import { SOUNDS } from './utils/constants';
-import { getDailyDateString, calculateStreakStatus, getStreakTitle, getUserRank, generateGrid } from './utils/gameUtils';
+import { getDailyDateString, calculateStreakStatus, getStreakTitle, getUserRank, generateGrid, generateRandomReward, getRankMultiplier } from './utils/gameUtils';
 import { CollectionModal, type RareWord } from './components/CollectionModal';
 import { LeaderboardModal } from './components/LeaderboardModal';
 import { SettingsMenu } from './components/SettingsMenu';
@@ -14,6 +14,7 @@ import { ResultsScreen } from './components/ResultsScreen';
 import { ShopModal } from './components/ShopModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { DailyChallengeModal } from './components/DailyChallengeModal';
+import { RewardModal } from './components/RewardModal';
 
 /* --- START THEME LOGIC --- */
 const useTheme = () => {
@@ -25,8 +26,10 @@ const useTheme = () => {
   useEffect(() => {
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
+      document.documentElement.style.colorScheme = 'dark'; // Сообщаем браузеру, что это темная тема
     } else {
       document.documentElement.classList.remove('dark');
+      document.documentElement.style.colorScheme = 'light';
     }
     localStorage.setItem('slovodel_theme', theme);
   }, [theme]);
@@ -99,11 +102,6 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     return saved ? parseInt(saved, 10) : 0;
   });
 
-  const [dailyWins, setDailyWins] = useState(() => {
-    const saved = localStorage.getItem('slovodel_daily_wins');
-    return saved ? parseInt(saved, 10) : 0;
-  });
-
   const [totalWords, setTotalWords] = useState(() => {
     const saved = localStorage.getItem('slovodel_total_words');
     return saved ? parseInt(saved, 10) : 0;
@@ -117,6 +115,11 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     const saved = localStorage.getItem('slovodel_rare_words');
     return saved ? JSON.parse(saved) : [];
   });
+
+  // Новые состояния для статистики
+  const [daysPlayed, setDaysPlayed] = useState(0);
+  const [dailyPlaces, setDailyPlaces] = useState({ first: 0, second: 0, third: 0 });
+  const [userRank, setUserRank] = useState(0);
 
   useEffect(() => {
     localStorage.setItem('slovodel_rare_words', JSON.stringify(rareWords));
@@ -140,6 +143,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
 
   const [lastRoundRecordBeaten, setLastRoundRecordBeaten] = useState<number | null>(null);
   const [newRankReached, setNewRankReached] = useState<string | null>(null);
+  const [activeReward, setActiveReward] = useState<{ achievement: string; reward: { type: string; amount: number; } } | null>(null);
 
   const showToast = useCallback((text: string, type: 'good' | 'bad') => {
     setMessage({ text, type });
@@ -287,9 +291,8 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     localStorage.setItem('slovodel_total_score', totalScore.toString());
     localStorage.setItem('slovodel_high_score', highScore.toString());
     localStorage.setItem('slovodel_rare_words', JSON.stringify(rareWords));
-    localStorage.setItem('slovodel_daily_wins', dailyWins.toString());
     localStorage.setItem('slovodel_total_words', totalWords.toString());
-  }, [totalScore, highScore, rareWords, dailyWins, totalWords]);
+  }, [totalScore, highScore, rareWords, totalWords]);
 
   // Синхронизация бонусов с localStorage
   useEffect(() => { localStorage.setItem('slovodel_bonus_time', bonusTimeLeft.toString()); }, [bonusTimeLeft]);
@@ -315,8 +318,32 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           setRareWords(Array.isArray(data.rare_words) ? data.rare_words : []);
 
           // Статистика
-          setDailyWins(data.daily_wins ?? 0);
           setTotalWords(data.total_words ?? 0);
+          
+          // Синхронизируем серию, ТОЛЬКО если данные в облаке свежие (сегодня или вчера)
+          if ((data.streak ?? 0) > streak) {
+            const lastUpdate = data.updated_at ? new Date(data.updated_at) : new Date(0);
+            const now = new Date();
+            const yesterday = new Date(now);
+            yesterday.setDate(now.getDate() - 1);
+
+            // Сравниваем даты (день, месяц, год)
+            const isToday = lastUpdate.toDateString() === now.toDateString();
+            const isYesterday = lastUpdate.toDateString() === yesterday.toDateString();
+
+            if (isToday || isYesterday) {
+              setStreak(data.streak);
+              localStorage.setItem('slovodel_streak_count', data.streak.toString());
+            }
+          }
+          
+          // Новые поля статистики (предполагаем, что они будут в БД)
+          setDaysPlayed(data.days_played ?? 0);
+          setDailyPlaces({
+            first: data.daily_1_place ?? 0,
+            second: data.daily_2_place ?? 0,
+            third: data.daily_3_place ?? 0
+          });
 
         } else { // Новый пользователь (или первый запуск)
           // Сбрасываем все значения до дефолтных, чтобы не использовать чужие данные из localStorage
@@ -327,9 +354,13 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           setBonusHintLeft(3);
           setBonusSwapLeft(3);
           setBonusWildcardLeft(3);
-          setDailyWins(0);
           setTotalWords(0);
+          setDaysPlayed(0);
+          setDailyPlaces({ first: 0, second: 0, third: 0 });
         }
+      }).catch((err:any) => {
+        console.warn("Не удалось загрузить профиль (возможно, нет сети). Используем локальные данные.", err);
+        // Не сбрасываем очки! Оставляем значения из localStorage.
       });
 
       // Загружаем актуальное состояние ежедневного испытания (бонусы)
@@ -381,8 +412,17 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       setNewRankReached(null);
     }
     
-    // Вычисляем новые победы сразу, чтобы сохранить актуальное значение
-    const newDailyWins = isDailyMode ? dailyWins + 1 : dailyWins;
+    // Вычисляем новые значения статистики ДО сохранения
+    let currentStreak = streak;
+    let currentDaysPlayed = daysPlayed;
+    const today = getDailyDateString();
+
+    if (!hasPlayedToday) {
+      currentStreak = streak + 1;
+      currentDaysPlayed = daysPlayed + 1;
+    }
+
+    const currentHighScore = finalScore > highScore ? finalScore : highScore;
 
     setTotalScore(newTotalScore);
     
@@ -410,8 +450,10 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       bonuses: bonusesToSave,
       avatarUrl: tgUser?.photo_url,
       rareWords: rareWords,
-      dailyWins: newDailyWins,
-      totalWords: totalWords
+      totalWords: totalWords,
+      highScore: currentHighScore,
+      daysPlayed: currentDaysPlayed,
+      streak: currentStreak
     })).catch((err: any) => {
       console.error("Ошибка сохранения рекорда:", err);
     });
@@ -423,18 +465,26 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       setLastRoundRecordBeaten(null);
     }
 
-
-    const today = getDailyDateString();
     if (!hasPlayedToday) {
-      const newStreak = streak + 1;
-      setStreak(newStreak);
+      setStreak(currentStreak);
+      setDaysPlayed(currentDaysPlayed);
       setHasPlayedToday(true);
-      localStorage.setItem('slovodel_streak_count', newStreak.toString());
+      localStorage.setItem('slovodel_streak_count', currentStreak.toString());
       localStorage.setItem('slovodel_streak_date', today);
 
-      const title = getStreakTitle(newStreak);
-      if ([3, 7, 14, 30].includes(newStreak)) {
+      const title = getStreakTitle(currentStreak);
+      if ([3, 7, 14, 30].includes(currentStreak)) {
         setStreakMilestone(title);
+        
+        // Множитель награды за серию
+        let mult = 1;
+        if (currentStreak >= 30) mult = 5;
+        else if (currentStreak >= 14) mult = 3;
+        else if (currentStreak >= 7) mult = 2;
+
+        const reward = generateRandomReward(mult);
+        setActiveReward({ achievement: `Серия: ${currentStreak} дней!`, reward });
+        playSfx('reward_fanfare');
       } else {
         showToast('Твой внутренний филолог в огне! 🔥 Продолжай в том же духе!', 'good');
       }
@@ -448,7 +498,6 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       setDailyStatus(info);
       localStorage.setItem('slovodel_daily_play_v2', JSON.stringify(info));
       
-      setDailyWins(newDailyWins);
       const totalDailyScore = Object.values(newScores).reduce((a, b) => a + b, 0);
 
       // Сохраняем результат в таблицу ежедневного рейтинга
@@ -494,7 +543,20 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       tg.disableClosingConfirmation();
     }
     setStatus('results');
-  }, [score, USER_NAME, saveUserData, saveDailyScore, highScore, totalScore, bonusTimeLeft, bonusHintLeft, bonusSwapLeft, bonusWildcardLeft, tgUser, rareWords, streak, hasPlayedToday, isDailyMode, playSfx, showToast, tg, dailyWins, totalWords, currentChallengeId]);
+  }, [score, USER_NAME, saveUserData, saveDailyScore, highScore, totalScore, bonusTimeLeft, bonusHintLeft, bonusSwapLeft, bonusWildcardLeft, tgUser, rareWords, streak, hasPlayedToday, isDailyMode, playSfx, showToast, tg, totalWords, currentChallengeId, daysPlayed, dailyStatus.scores]);
+
+  const handleClaimReward = () => {
+    if (!activeReward) return;
+    const { type, amount } = activeReward.reward;
+    switch (type) {
+        case 'time': setBonusTimeLeft(prev => prev + amount); break;
+        case 'hint': setBonusHintLeft(prev => prev + amount); break;
+        case 'swap': setBonusSwapLeft(prev => prev + amount); break;
+        case 'wildcard': setBonusWildcardLeft(prev => prev + amount); break;
+    }
+    playSfx('bonus');
+    setActiveReward(null);
+  };
 
   useEffect(() => {
     let interval: number;
@@ -626,7 +688,14 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
 
         if (existingIndex === -1) {
           showToast(`✨ НОВАЯ РЕДКОСТЬ: ${targetWord.toUpperCase()}!`, 'good');
-          setRareWords(prev => [...prev, { text: lowerText, length: targetWord.length, score: finalPoints }]);
+          const newRareWords = [...rareWords, { text: lowerText, length: targetWord.length, score: finalPoints }];
+          setRareWords(newRareWords);
+          
+          if (newRareWords.length % 5 === 0) {
+             const reward = generateRandomReward();
+             setActiveReward({ achievement: `Коллекционер: ${newRareWords.length} слов!`, reward });
+             playSfx('reward_fanfare');
+          }
         } else {
           if (finalPoints > rareWords[existingIndex].score) {
             showToast(`🔥 РЕКОРД ОБНОВЛЕН: ${targetWord.toUpperCase()}!`, 'good');
@@ -899,16 +968,18 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
 
   if (isDictLoading) {
     return (
-      <div className="h-full w-full flex flex-col items-center justify-center p-6">
+      // Используем тот же фон, что и в основной игре, чтобы не было "бледности" при загрузке
+      <div className="app-wrapper items-center justify-center p-6">
         <div className="spinner w-12 h-12 text-indigo-600 mb-4 border-4 border-indigo-200 border-t-indigo-600 rounded-full"></div>
-        <h2 className="text-xl font-bold uppercase">СЛОВОДЕЛ</h2>
-        <p className="text-sm opacity-50 mt-2">Готовим буквы...</p>
+        {/* Применяем новый класс градиента */}
+        <h2 className="text-2xl font-black uppercase text-gradient-custom">СЛОВОДЕЛ</h2>
+        <p className="text-sm opacity-50 mt-2 text-gray-900 dark:text-white">Готовим буквы...</p>
       </div>
     );
   }
 
   return (
-    <div className="h-full w-full max-w-md mx-auto flex flex-col relative overflow-hidden shadow-2xl transition-colors duration-300 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-200 via-purple-200 to-pink-200 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900 text-gray-900 dark:text-white font-sans selection:bg-pink-500/30">
+    <div className="app-wrapper">
       {isMenuOpen && (
         <SettingsMenu
           musicVolume={musicVolume} setMusicVolume={setMusicVolume}
@@ -952,9 +1023,8 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           totalScore={totalScore}
           highScore={highScore}
           streak={streak}
-          dailyWins={dailyWins}
           totalWords={totalWords}
-          rareWordsCount={rareWords.length}
+          rareWords={rareWords}
           bonuses={{
             time: bonusTimeLeft,
             hint: bonusHintLeft,
@@ -962,6 +1032,17 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
             wildcard: bonusWildcardLeft
           }}
           onOpenShop={() => { setIsAchievementsOpen(false); setShopPreviousScreen('achievements'); setIsShopOpen(true); }}
+          place={userRank}
+          daysPlayed={daysPlayed}
+          dailyPlaces={dailyPlaces}
+        />
+      )}
+      {activeReward && (
+        <RewardModal
+          achievement={activeReward.achievement}
+          reward={activeReward.reward}
+          onClose={handleClaimReward}
+          playSfx={playSfx}
         />
       )}
       {showCollection && <CollectionModal words={rareWords} onClose={() => setShowCollection(false)} playSfx={playSfx} />}
@@ -1048,6 +1129,14 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
             }
           }}
           newRankReached={newRankReached}
+          onRankModalClose={() => {
+            if (newRankReached) {
+              const mult = getRankMultiplier(newRankReached);
+              const reward = generateRandomReward(mult);
+              setActiveReward({ achievement: `За достижение звания!`, reward });
+              playSfx('reward_fanfare');
+            }
+          }}
         />
       )}
 

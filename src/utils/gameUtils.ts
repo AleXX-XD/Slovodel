@@ -62,7 +62,8 @@ export const getUserRank = (points: number) => {
   if (points < 2000) return "Новичок-грамотей";
   if (points < 5000) return "Книжный червь";
   if (points < 10000) return "Буквенный следопыт";
-  if (points < 50000) return "Словесный скаут";
+  if (points < 20000) return "Словесный скаут";
+  if (points < 50000) return "Адепт алфавита";
   if (points < 100000) return "Мастер слов";
   if (points < 200000) return "Магистр букв";
   if (points < 500000) return "Живая энциклопедия";
@@ -79,7 +80,8 @@ export const getLevelProgress = (s: number) => {
   if (s < 2000) return (s / 2000) * 100;
   if (s < 5000) return ((s - 2000) / 3000) * 100;
   if (s < 10000) return ((s - 5000) / 5000) * 100;
-  if (s < 50000) return ((s - 10000) / 40000) * 100;
+  if (s < 20000) return ((s - 10000) / 10000) * 100;
+  if (s < 50000) return ((s - 20000) / 30000) * 100;
   if (s < 100000) return ((s - 50000) / 50000) * 100;
   if (s < 200000) return ((s - 100000) / 100000) * 100;
   if (s < 500000) return ((s - 200000) / 300000) * 100;
@@ -90,6 +92,7 @@ export const getNextLevelTarget = (s: number) => {
   if (s < 2000) return 2000;
   if (s < 5000) return 5000;
   if (s < 10000) return 10000;
+  if (s < 20000) return 20000;
   if (s < 50000) return 50000;
   if (s < 100000) return 100000;
   if (s < 200000) return 200000;
@@ -138,4 +141,34 @@ export const generateGrid = (level: number, seed?: number) => {
   }
 
   return Array.from(letters).sort(() => (seed !== undefined ? rand() - 0.5 : Math.random() - 0.5));
+};
+
+export const generateRandomReward = (multiplier: number = 1): { type: 'time' | 'hint' | 'swap' | 'wildcard', amount: number } => {
+  const rand = Math.random();
+  let type: 'time' | 'hint' | 'swap' | 'wildcard';
+  let baseAmount = 1;
+
+  // Вероятности: Время (30%), Замена (27%), Джокер (25%), Слово (18%)
+  if (rand < 0.30) {
+    type = 'time';
+    baseAmount = Math.random() < 0.5 ? 1 : 2;
+  } else if (rand < 0.57) {
+    type = 'swap';
+    baseAmount = Math.random() < 0.5 ? 1 : 2;
+  } else if (rand < 0.82) {
+    type = 'wildcard';
+  } else {
+    type = 'hint';
+  }
+  
+  return { type, amount: Math.ceil(baseAmount * multiplier) };
+};
+
+export const getRankMultiplier = (rank: string): number => {
+  if (rank === "Буквенный следопыт" || rank === "Словесный скаут") return 2;
+  if (rank === "Адепт алфавита" || rank === "Мастер слов") return 3;
+  if (rank === "Магистр букв") return 4;
+  if (rank === "Живая энциклопедия") return 5;
+  if (rank === "Оракул Словодела") return 10;
+  return 1;
 };

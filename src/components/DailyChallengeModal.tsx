@@ -35,7 +35,7 @@ export const DailyChallengeModal = ({ onClose, onStart, playSfx, completedLevels
               </div>
             </div>
             <p className="text-sm text-gray-800 dark:text-white opacity-80">
-              Пройдите все 3 уровня сложности, чтобы попасть в рейтинг! Для прохождения вам доступно по 2 подсказки каждого вида.
+              Пройдите все 3 уровня сложности, чтобы попасть в рейтинг! Для прохождения вам доступно по 1 бонусу каждого вида.
             </p>
           </div>
 
