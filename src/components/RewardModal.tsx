@@ -23,7 +23,7 @@ const rewardNames: Record<string, string> = {
 
 export const RewardModal = ({ onClose, playSfx, achievement, reward }: RewardModalProps) => {
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-6 animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[500] flex items-center justify-center dark:bg-black/80 backdrop-blur-md p-6 animate-in fade-in duration-300">
       <div className="reward-modal-content">
         <div className="reward-gradient-bar"></div>
         <Gift size={64} className="reward-icon" />

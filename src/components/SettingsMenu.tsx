@@ -43,7 +43,7 @@ export const SettingsMenu = ({
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-3">
             <Settings size={28} className="modal-icon" />
-            <h2 className="text-xl font-black uppercase tracking-tight">Настройки</h2>
+            <h2 className="text-xl font-bold uppercase tracking-tight">Настройки</h2>
           </div>
           <button onClick={() => { playSfx('click'); onClose(); }} className="modal-close-btn">
             <X size={24} className="modal-icon" />

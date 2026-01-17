@@ -61,9 +61,69 @@ def generate_grid(level):
     random.shuffle(letters)
     return letters
 
+# --- РАССЫЛКА СООБЩЕНИЙ ---
+def process_broadcasts():
+    print("Проверка очереди рассылок...")
+    try:
+        # Получаем рассылки со статусом pending
+        response = supabase.table("broadcasts").select("*").eq("status", "pending").execute()
+        broadcasts = response.data
+        
+        if not broadcasts:
+            print("Нет активных рассылок.")
+            return
+
+        # Получаем всех пользователей (с пагинацией, если их много)
+        users = []
+        start = 0
+        step = 1000
+        while True:
+            u_res = supabase.table("leaderboard").select("telegram_id").range(start, start + step - 1).execute()
+            if not u_res.data:
+                break
+            users.extend(u_res.data)
+            if len(u_res.data) < step:
+                break
+            start += step
+        
+        print(f"Найдено {len(users)} пользователей для рассылки.")
+
+        for broadcast in broadcasts:
+            print(f"--- Рассылка ID {broadcast['id']} ---")
+            msg_text = broadcast['message']
+            sent_count = 0
+            
+            for user in users:
+                tid = user.get('telegram_id')
+                if not tid: continue
+                
+                try:
+                    requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={
+                        "chat_id": tid,
+                        "text": msg_text
+                    }, timeout=5)
+                    sent_count += 1
+                    time.sleep(0.05) # Задержка 50мс
+                except Exception as e:
+                    print(f"Ошибка отправки {tid}: {e}")
+            
+            # Обновляем статус
+            supabase.table("broadcasts").update({
+                "status": "sent", 
+                "sent_count": sent_count,
+                "processed_at": datetime.now().isoformat()
+            }).eq("id", broadcast['id']).execute()
+            print(f"Рассылка завершена. Отправлено: {sent_count}")
+            
+    except Exception as e:
+        print(f"Ошибка в process_broadcasts: {e}")
+
 # --- ОСНОВНАЯ ЛОГИКА ---
 def run_game_cycle():
     print(f"\n[{datetime.now().strftime('%H:%M:%S')}] --- НАЧАЛО ОБНОВЛЕНИЯ ---")
+    
+    # Сначала обрабатываем рассылки
+    process_broadcasts()
     
     try:
         # 1. Получаем ID текущего испытания из таблицы challenges

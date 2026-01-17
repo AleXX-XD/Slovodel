@@ -26,17 +26,17 @@ export const ResultsScreen = ({ score, lastRoundRecordBeaten, totalScore, userNa
   };
 
   return (
-    <div className="h-full w-full max-w-md mx-auto p-6 flex flex-col items-center justify-center elative">
+    <div className="h-full w-full max-w-md mx-auto p-6 flex flex-col items-center justify-center animate-pop relative">
       {/* Модальное окно повышения ранга */}
       {showRankModal && newRankReached && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-6 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl border border-white/20 relative overflow-hidden">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center dark:bg-black/80 backdrop-blur-md p-6 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl border border-white/20 relative overflow-hidden animate-pop">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
             <img src="./image/crown.png" alt="Rank Up" className="w-24 h-24 mx-auto mb-4 animate-bounce object-contain" />
-            <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-600 uppercase tracking-tight mb-2">Повышение!</h2>
+            <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-600 uppercase tracking-tight mb-2">Повышение!</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Твои знания растут! Новое звание:</p>
             <div className="py-4 px-6 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl mb-8 border border-indigo-100 dark:border-indigo-500/30">
-              <p className="text-xl font-black text-indigo-600 dark:text-indigo-300 uppercase tracking-widest">{newRankReached}</p>
+              <p className="text-xl font-bold text-indigo-600 dark:text-indigo-300 uppercase tracking-widest">{newRankReached}</p>
             </div>
             <button 
               onClick={() => { setShowRankModal(false); onRankModalClose(); }}
@@ -51,13 +51,13 @@ export const ResultsScreen = ({ score, lastRoundRecordBeaten, totalScore, userNa
       <h2 className="opacity-70 uppercase mb-4 font-bold tracking-[0.2em] text-xs text-gray-600 dark:text-white">Раунд окончен</h2>
       
       <div className="relative">
-        <div className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-indigo-600 to-purple-600 dark:from-white dark:to-white/50 mb-4 drop-shadow-lg">{score}</div>
+        <div className="text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-indigo-600 to-purple-600 dark:from-white dark:to-white/50 mb-4 drop-shadow-lg">{score}</div>
       </div>
 
       {lastRoundRecordBeaten !== null && (
         <div className="mb-8 text-center animate-bounce">
           <div className="bg-amber-500/20 backdrop-blur-md text-amber-700 dark:text-amber-200 px-6 py-2 rounded-full border border-amber-500/30 shadow-lg">
-            <p className="font-black text-sm uppercase tracking-wide">🏆 Новый рекорд!</p>
+            <p className="font-bold text-sm uppercase tracking-wide">🏆 Новый рекорд!</p>
           </div>
         </div>
       )}

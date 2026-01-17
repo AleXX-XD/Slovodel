@@ -56,15 +56,15 @@ export const GameScreen = (props: GameScreenProps) => {
       {swapTargetIdx !== null && (
         <div className="modal-overlay z-[60]">
           <div className="modal-content">
-            <h3 className="modal-title text-indigo-600 dark:text-indigo-400">Замена</h3>
-            <p className="text-xs opacity-60 mt-2 text-gray-600 dark:text-white">Введите букву:</p>
+            <h3 className="swap-modal-title">Замена</h3>
+            <p className="swap-modal-text">Введите букву:</p>
             <input
               autoFocus
-              className="w-20 h-20 text-4xl text-center rounded-2xl my-6 uppercase outline-none bg-gray-100 dark:bg-black/20 text-gray-900 dark:text-white font-black border border-gray-200 dark:border-white/10 shadow-inner"
+              className="swap-modal-input"
               maxLength={1}
               onChange={(e) => performSwap(e.target.value)}
             />
-            <button onClick={() => setSwapTargetIdx(null)} className="w-full py-3 bg-gray-200 dark:bg-gray-800 rounded-xl font-bold text-gray-500">Отмена</button>
+            <button onClick={() => setSwapTargetIdx(null)} className="swap-modal-cancel-btn">Отмена</button>
           </div>
         </div>
       )}
@@ -72,47 +72,47 @@ export const GameScreen = (props: GameScreenProps) => {
       {/* Хедер */}
       <header className="p-4 flex justify-between items-center z-20 shrink-0">
         <div className="flex flex-col">
-          <div className="font-black text-indigo-600 dark:text-white text-2xl drop-shadow-md">{score}</div>
-          {isDailyMode && <div className="text-[10px] font-black uppercase text-amber-500 tracking-wider">День 🏆</div>}
+          <div className="game-score">{score}</div>
+          {isDailyMode && <div className="text-[10px] font-bold uppercase text-amber-500 tracking-wider">День 🏆</div>}
         </div>
-        <div className={`text-2xl font-mono font-bold ${timeLeft < 10 ? 'text-red-500 dark:text-red-400 animate-pulse' : 'text-gray-700 dark:text-white/90'}`}>{formatTime(timeLeft)}</div>
+        <div className={`timer-base ${timeLeft < 10 ? 'timer-warning' : 'timer-normal'}`}>{formatTime(timeLeft)}</div>
         <div className="flex gap-2">
-          <button onClick={() => { playSfx('click'); onOpenAbout(); }} className="p-3 bg-white/60 dark:bg-white/10 backdrop-blur-md rounded-xl border border-white/40 dark:border-white/10 active:scale-95 shadow-lg text-blue-500 dark:text-blue-300"><Info size={24} /></button>
-          <button onClick={() => { playSfx('click'); onOpenMenu(); }} className="p-3 bg-white/60 dark:bg-white/10 backdrop-blur-md rounded-xl border border-white/40 dark:border-white/10 active:scale-95 shadow-lg text-gray-600 dark:text-white/70"><Settings size={24} /></button>
+          <button onClick={() => { playSfx('click'); onOpenAbout(); }} className="game-header-btn text-cyan-500"><Info size={24} /></button>
+          <button onClick={() => { playSfx('click'); onOpenMenu(); }} className="game-header-btn"><Settings size={24} /></button>
         </div>
       </header>
 
       {/* Область найденных слов */}
       <div className="flex-1 p-4 overflow-y-auto space-y-4 min-h-0">
         {hintWord && (
-          <div className="bg-amber-500/10 dark:bg-amber-500/20 backdrop-blur-md p-4 rounded-2xl animate-pop shadow-lg border border-amber-500/20 dark:border-amber-500/30">
-            <div className="text-[10px] font-black text-amber-600 dark:text-amber-300 uppercase tracking-widest mb-1">Подсказка</div>
+          <div className="hint-box">
+            <div className="hint-label">Подсказка</div>
             {hintActiveSeconds > 0 ? (
-              <div className="text-sm font-bold italic text-gray-800 dark:text-white leading-relaxed">{isDefinitionLoading ? "Загрузка..." : hintDefinition}</div>
+              <div className="hint-text">{isDefinitionLoading ? "Загрузка..." : hintDefinition}</div>
             ) : (
-              <div className="text-3xl font-black text-center text-indigo-600 dark:text-white uppercase animate-bounce drop-shadow-md my-2">{hintWord}</div>
+              <div className="hint-word">{hintWord}</div>
             )}
           </div>
         )}
         <div className="flex flex-wrap gap-2 content-start">
           {foundWords.map((w, i) => (
-            <div key={i} className="bg-white/60 dark:bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-lg font-bold text-sm text-indigo-700 dark:text-white shadow-sm border border-white/40 dark:border-white/10 flex items-center gap-2 animate-pop">
+            <div key={i} className="found-word-item">
               <span className={w.text.length >= 7 ? "text-amber-500" : ""}>{w.text.toUpperCase()}</span>
-              <span className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[10px] px-1.5 rounded-md font-black">+{w.score}</span>
+              <span className="found-word-score">+{w.score}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Игровая панель */}
-      <div className="mt-auto w-full bg-white/60 dark:bg-white/10 backdrop-blur-xl p-4 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.3)] z-30 border-t border-white/40 dark:border-white/10 shrink-0">
+      <div className="game-panel">
         {/* Бонусы */}
         <div className="mb-5 flex justify-around items-center">
           {[
-            { icon: <Hourglass size={32} className="text-indigo-500 dark:text-indigo-400 drop-shadow-sm" />, count: bonusTimeLeft, action: handleAddTime, active: true },
-            { icon: <Lightbulb size={32} className="text-amber-500 dark:text-amber-400 drop-shadow-sm" />, count: hintActiveSeconds > 0 ? `${hintActiveSeconds}c` : bonusHintLeft, action: handleHint, active: true, pulse: hintActiveSeconds > 0, ringClass: 'ring-amber-400/50' },
-            { icon: <SquareAsterisk size={32} className="text-purple-500 dark:text-purple-400 drop-shadow-sm" />, count: wildcardActiveSeconds > 0 ? `${wildcardActiveSeconds}c` : bonusWildcardLeft, action: handleWildcard, active: wildcardActiveSeconds > 0, pulse: wildcardActiveSeconds > 0, ringClass: 'ring-purple-400/50' },
-            { icon: <RefreshCw size={32} className="text-pink-500 dark:text-pink-400 drop-shadow-sm" />, count: bonusSwapLeft, action: toggleSwapMode, active: isSwapActive }
+            { icon: <Hourglass size={32} className="text-icon-indigo bonus-icon-base" />, count: bonusTimeLeft, action: handleAddTime, active: true },
+            { icon: <Lightbulb size={32} className="text-icon-amber bonus-icon-base" />, count: hintActiveSeconds > 0 ? `${hintActiveSeconds}c` : bonusHintLeft, action: handleHint, active: true, pulse: hintActiveSeconds > 0, ringClass: 'ring-amber-400/50' },
+            { icon: <SquareAsterisk size={32} className="text-icon-purple bonus-icon-base" />, count: wildcardActiveSeconds > 0 ? `${wildcardActiveSeconds}c` : bonusWildcardLeft, action: handleWildcard, active: wildcardActiveSeconds > 0, pulse: wildcardActiveSeconds > 0, ringClass: 'ring-purple-400/50' },
+            { icon: <RefreshCw size={32} className="text-icon-pink bonus-icon-base" />, count: bonusSwapLeft, action: toggleSwapMode, active: isSwapActive }
           ].map((btn, i) => {
             const isZero = typeof btn.count === 'number' && btn.count <= 0 && !btn.pulse;
             return (
@@ -122,10 +122,10 @@ export const GameScreen = (props: GameScreenProps) => {
                 className={`relative flex flex-col items-center group transition-all ${isZero && isDailyMode ? 'opacity-50 grayscale cursor-not-allowed' : 'active:scale-95'}`}
                 disabled={isZero && isDailyMode}
               >
-                <div className={`w-14 h-14 bg-gradient-to-b from-white to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-2xl flex items-center justify-center border-2 border-white/50 shadow-xl ${btn.pulse ? `animate-pulse ring-4 ${btn.ringClass}` : ''}`}>
+                <div className={`bonus-btn-container ${btn.pulse ? `animate-pulse ring-4 ${btn.ringClass}` : ''}`}>
                   {btn.icon}
                 </div>
-                <span className={`mt-2 text-[10px] font-black px-2 py-0.5 rounded-full backdrop-blur-sm ${isZero && !isDailyMode ? 'bg-green-500 text-white' : 'bg-black/20 dark:bg-white/10 text-gray-800 dark:text-white'}`}>
+                <span className={`mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm ${isZero && !isDailyMode ? 'bg-green-500 text-white' : 'bonus-badge-normal'}`}>
                   {isZero ? (isDailyMode ? '0' : '+') : btn.count}
                 </span>
               </button>
@@ -134,13 +134,16 @@ export const GameScreen = (props: GameScreenProps) => {
         </div>
 
         {/* Поле ввода */}
-        <div className="h-16 mb-4 bg-gray-100/50 dark:bg-black/20 rounded-2xl flex items-center justify-center relative px-12 shadow-inner border border-gray-200 dark:border-white/5">
+        <div className="input-field-container">
           {currentInput.length > 0 && (
             <button onClick={() => { playSfx('click'); setCurrentInput([]); }} className="absolute left-2 p-2 text-gray-400 hover:text-red-400 transition-colors" title="Стереть все"><Trash2 size={24} /></button>
           )}
-          <span className="text-3xl font-black tracking-[0.2em] text-indigo-600 dark:text-white uppercase truncate drop-shadow-md">
-            {currentInput.join('') || <span className="opacity-30 text-lg font-normal normal-case italic text-gray-400 dark:text-white/20">Слово...</span>}
-          </span>
+          <div 
+            className={`input-text ${currentInput.length > 12 ? 'text-right' : 'text-center'}`}
+            style={{ direction: currentInput.length > 12 ? 'rtl' : 'ltr' }}
+          >
+            {currentInput.length > 0 ? <span style={{ direction: 'ltr', unicodeBidi: 'embed' }}>{currentInput.join('')}</span> : <span className="input-placeholder">Слово...</span>}
+          </div>
           {currentInput.length > 0 && (
             <button onClick={() => { playSfx('click'); setCurrentInput(prev => prev.slice(0, -1)); }} className="absolute right-2 p-2 text-gray-400 hover:text-indigo-500 transition-colors"><Delete size={24} /></button>
           )}
@@ -155,8 +158,8 @@ export const GameScreen = (props: GameScreenProps) => {
 
         {/* Кнопки управления */}
         <div className="flex gap-3">
-          <button onClick={() => { playSfx('click'); setGrid([...grid].sort(() => Math.random() - 0.5)); }} className="flex-1 py-4 bg-gradient-to-b from-blue-400 to-blue-600 text-white font-black rounded-2xl active:scale-95 transition-all uppercase text-lg tracking-widest shadow-lg">Микс</button>
-          <button onClick={checkWord} disabled={currentInput.length === 0} className={`flex-[2] py-4 font-black rounded-2xl transition-all uppercase text-lg tracking-widest shadow-lg ${currentInput.length > 0 ? 'bg-gradient-to-b from-green-400 to-green-600 text-white active:scale-95' : 'bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed'}`}>Ввод</button>
+          <button onClick={() => { playSfx('click'); setGrid([...grid].sort(() => Math.random() - 0.5)); }} className="flex-1 py-4 bg-gradient-to-b from-blue-400 to-blue-600 text-white font-bold rounded-2xl active:scale-95 transition-all uppercase text-lg tracking-widest shadow-lg">Микс</button>
+          <button onClick={checkWord} disabled={currentInput.length === 0} className={`flex-[2] py-4 font-bold rounded-2xl transition-all uppercase text-lg tracking-widest shadow-lg ${currentInput.length > 0 ? 'bg-gradient-to-b from-green-400 to-green-600 text-white active:scale-95' : 'btn-enter-disabled'}`}>Ввод</button>
         </div>
       </div>
 
@@ -172,7 +175,7 @@ export const GameScreen = (props: GameScreenProps) => {
           <div className="modal-content">
             <h3 className="modal-title">Завершить раунд?</h3>
             <div className="flex gap-3">
-              <button onClick={() => { playSfx('click'); setShowConfirm(false); }} className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-xl font-bold">Нет</button>
+              <button onClick={() => { playSfx('click'); setShowConfirm(false); }} className="confirm-modal-cancel">Нет</button>
               <button onClick={() => { playSfx('click'); finishGame(); }} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold shadow-lg shadow-red-500/30">Да</button>
             </div>
           </div>

@@ -45,8 +45,8 @@ interface Player {
   telegram_id?: number;
   avatar_url?: string;
 }
-export default function App({ saveUserData, saveDailyScore, getUserData, getActiveChallenge, getLeaderboard, getDailyLeaderboard, fetchPreviousDailyLeaderboard, getUserDailyScore, fetchUserRank, saveFeedback, fetchFeedbacks, addCustomWord, fetchCustomWords, fetchAdminCustomWords, deleteCustomWord, updateCustomWord, sendFeedbackReply, archiveFeedback, deleteFeedback, tg }: any) {
-  const tgUser = (window as any).Telegram?.WebApp?.initDataUnsafe?.user;
+export default function App({ saveUserData, saveDailyScore, getUserData, getActiveChallenge, getLeaderboard, getDailyLeaderboard, fetchPreviousDailyLeaderboard, getUserDailyScore, fetchUserRank, saveFeedback, fetchFeedbacks, addCustomWord, fetchCustomWords, fetchAdminCustomWords, deleteCustomWord, updateCustomWord, sendFeedbackReply, archiveFeedback, deleteFeedback, sendBroadcast, handleTestModal, tg }: any) {
+  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
   const USER_NAME = tgUser ? (tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '')) : 'Анонимный Лингвист';
   
   const ADMIN_ID = 818790686; // ЗАМЕНИТЕ НА ВАШ TELEGRAM ID
@@ -63,7 +63,6 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   const [showCollection, setShowCollection] = useState(false);
   const [isShopOpen, setIsShopOpen] = useState(false);
   const [shopPreviousScreen, setShopPreviousScreen] = useState<'about' | 'achievements' | null>(null);
-  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [isDailyChallengeOpen, setIsDailyChallengeOpen] = useState(false);
   const [currentChallengeId, setCurrentChallengeId] = useState<string>(() => {
     const saved = localStorage.getItem('slovodel_daily_play_v2');
@@ -119,7 +118,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   // Новые состояния для статистики
   const [daysPlayed, setDaysPlayed] = useState(0);
   const [dailyPlaces, setDailyPlaces] = useState({ first: 0, second: 0, third: 0 });
-  const [userRank, setUserRank] = useState(0);
+  const [userRank] = useState(0);
 
   useEffect(() => {
     localStorage.setItem('slovodel_rare_words', JSON.stringify(rareWords));
@@ -990,7 +989,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           playSfx={playSfx}
           showExitButton={status === 'playing'}
           isAdmin={tgUser?.id === ADMIN_ID}
-          onOpenAdmin={() => { setIsMenuOpen(false); setIsAdminPanelOpen(true); }}
+          onOpenAdmin={() => { setIsMenuOpen(false); setStatus('admin'); }}
         />
       )}
       {isAboutOpen && (
@@ -1051,9 +1050,9 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         if (shopPreviousScreen === 'about') setIsAboutOpen(true);
         else if (shopPreviousScreen === 'achievements') setIsAchievementsOpen(true);
       }} playSfx={playSfx} />}
-      {isAdminPanelOpen && (
+      {status === 'admin' && (
         <AdminPanelModal 
-          onClose={() => setIsAdminPanelOpen(false)} 
+          onClose={() => setStatus('menu')} 
           playSfx={playSfx} 
           fetchFeedbacks={fetchFeedbacks} 
           addCustomWord={(w) => addCustomWord(w, tgUser?.id)}
@@ -1063,6 +1062,8 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           onReply={sendFeedbackReply}
           onArchive={archiveFeedback}
           onDelete={deleteFeedback}
+          onBroadcast={sendBroadcast}
+          onTestModal={handleTestModal}
         />
       )}
       {isDailyChallengeOpen && (

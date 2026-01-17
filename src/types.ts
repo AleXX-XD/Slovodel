@@ -1,5 +1,5 @@
 
-export type GameStatus = 'menu' | 'playing' | 'results' | 'leaderboard';
+export type GameStatus = 'menu' | 'playing' | 'results' | 'leaderboard' | 'admin';
 
 export interface WordEntry {
   text: string;

@@ -49,17 +49,13 @@
 @layer utilities {
   /* Специальный класс для градиентного текста, работающий в Safari/iOS */
   .text-gradient-custom {
-    @apply bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    @apply text-purple-700;
+
   }
 
   .dark .text-gradient-custom {
-    @apply bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    @apply text-purple-300;
+
   }
 
   /* --- Глобальные компоненты интерфейса --- */
@@ -137,7 +133,7 @@
 
   /* Кнопка с буквой (всегда светлая с черным текстом) */
   .letter-btn {
-    @apply rounded-2xl font-black text-2xl flex items-center justify-center transition-all active:scale-95 shadow-lg backdrop-blur-sm border-2 border-white/40;
+    @apply rounded-2xl font-bold text-4xl flex items-center justify-center transition-all active:scale-95 shadow-lg backdrop-blur-sm border-2 border-white/40;
     @apply bg-white/60 text-gray-700 hover:bg-white/80;
   }
   /* Активная/подсвеченная буква */
@@ -147,7 +143,7 @@
 
   /* --- Модальные окна --- */
   .modal-overlay {
-    @apply fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md;
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md;
   }
 
   .dark .modal-overlay {
@@ -159,7 +155,7 @@
   }
 
   .modal-content {
-    @apply bg-white/80 backdrop-blur-2xl rounded-3xl p-6 w-[90%] max-w-sm text-center shadow-2xl border border-white/40;
+    @apply bg-white/80 backdrop-blur-2xl rounded-3xl p-6 w-[95%] max-w-md text-center shadow-2xl border border-white/40;
     @apply text-gray-900;
     @apply max-h-[85vh] flex flex-col; /* Ограничение высоты и флекс для скролла */
     animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -170,7 +166,7 @@
   }
 
   .modal-title {
-    @apply text-xl font-black uppercase mb-4;
+    @apply text-xl font-bold uppercase mb-4;
   }
 
   /* Строка настройки в меню */
@@ -215,7 +211,7 @@
   }
 
   .about-block-title {
-    @apply font-black text-indigo-600 uppercase text-xs mb-3 flex items-center gap-2;
+    @apply font-bold text-indigo-600 uppercase text-xs mb-3 flex items-center gap-2;
   }
   .dark .about-block-title {
     @apply text-indigo-300;
@@ -253,7 +249,7 @@
     @apply text-gray-100;
   }
   .item-value {
-    @apply font-black whitespace-nowrap text-sm text-indigo-600;
+    @apply font-bold whitespace-nowrap text-sm text-indigo-600;
   }
   .dark .item-value {
     @apply text-indigo-300;
@@ -354,7 +350,7 @@
   }
 
   .collection-word {
-    @apply text-lg font-black uppercase tracking-wider leading-none text-indigo-600;
+    @apply text-lg font-bold uppercase tracking-wider leading-none text-indigo-600;
   }
   .dark .collection-word {
     @apply text-indigo-300;
@@ -368,7 +364,7 @@
   }
 
   .collection-score {
-    @apply bg-indigo-100 px-3 py-1 rounded-full text-sm font-black text-indigo-600;
+    @apply bg-indigo-100 px-3 py-1 rounded-full text-sm font-bold text-indigo-600;
   }
   .dark .collection-score {
     @apply bg-indigo-500/20 text-indigo-300;
@@ -417,7 +413,7 @@
   }
 
   .stat-box {
-    @apply p-4 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/40 flex flex-col items-center text-center shadow-sm;
+    @apply p-2 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/40 flex flex-col items-center text-center shadow-sm;
   }
   .dark .stat-box {
     @apply bg-white/10 border-white/10;
@@ -426,7 +422,7 @@
   .profile-label { @apply text-xs font-bold uppercase mb-2 opacity-70 text-gray-800; }
   .dark .profile-label { @apply text-white; }
   
-  .stat-value-text { @apply text-2xl font-black text-gray-800; }
+  .stat-value-text { @apply text-lg font-bold text-gray-800; }
   .dark .stat-value-text { @apply text-white; }
 
   .stat-label-text { @apply text-[10px] uppercase font-bold opacity-50 text-gray-600; }
@@ -434,7 +430,7 @@
 
   /* Стили для окна награды (RewardModal) */
   .reward-modal-content {
-    @apply bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl border border-white/20 relative overflow-hidden;
+    @apply bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-8 text-center shadow-2xl border border-white/20 relative overflow-hidden;
     animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
   /* Примечание: dark:bg-slate-900 здесь работает, так как это не внутри @apply с другими классами, но для единообразия можно разделить */
@@ -451,7 +447,7 @@
   }
 
   .reward-title {
-    @apply text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-600 uppercase tracking-tight mb-2;
+    @apply text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-600 uppercase tracking-tight mb-2;
   }
 
   .reward-subtitle {
@@ -468,6 +464,81 @@
     @apply bg-indigo-900/30 border-indigo-500/30;
   }
 
+  /* --- Компоненты Табов (для Leaderboard и Admin) --- */
+  .tabs-group {
+    @apply flex p-1 bg-gray-200/50 rounded-xl;
+  }
+  .dark .tabs-group {
+    @apply bg-black/20;
+  }
+
+  .tab-item {
+    @apply flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center justify-center gap-2 cursor-pointer;
+    @apply text-gray-500;
+  }
+  .dark .tab-item {
+    @apply text-gray-400;
+  }
+
+  .tab-item-active {
+    @apply bg-white shadow-sm text-indigo-600;
+  }
+  .dark .tab-item-active {
+    @apply bg-white/10 text-white;
+  }
+
+  /* --- Компоненты Лидерборда --- */
+  .leaderboard-scroll {
+    @apply overflow-y-auto pr-1 space-y-2 flex-1 my-2;
+    scrollbar-width: none;
+  }
+  .leaderboard-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .leaderboard-card {
+    @apply flex items-center gap-3 p-3 rounded-xl border transition-all shadow-sm;
+    @apply bg-white/50 backdrop-blur-sm border-white/30;
+  }
+  .dark .leaderboard-card {
+    @apply bg-white/5 border-white/10;
+  }
+
+  .leaderboard-card-active {
+    @apply bg-indigo-100 border-indigo-200;
+  }
+  .dark .leaderboard-card-active {
+    @apply bg-indigo-500/30 border-indigo-400/50;
+  }
+
+  .leaderboard-name {
+    @apply font-bold truncate text-gray-800;
+  }
+  .dark .leaderboard-name {
+    @apply text-white;
+  }
+  
+  .leaderboard-name-active {
+    @apply text-indigo-600;
+  }
+  .dark .leaderboard-name-active {
+    @apply text-indigo-200;
+  }
+
+  .leaderboard-subtext {
+    @apply text-[10px] font-bold opacity-50 uppercase text-gray-600;
+  }
+  .dark .leaderboard-subtext {
+    @apply text-white/70;
+  }
+
+  .leaderboard-points {
+    @apply font-bold text-amber-600 w-20 text-right shrink-0;
+  }
+  .dark .leaderboard-points {
+    @apply text-amber-300;
+  }
+
   .reward-box-label {
     @apply text-xs font-bold uppercase text-indigo-500;
   }
@@ -476,7 +547,7 @@
   }
 
   .reward-box-value {
-    @apply text-xl font-black text-gray-800;
+    @apply text-xl font-bold text-gray-800;
   }
   .dark .reward-box-value {
     @apply text-white;
@@ -484,5 +555,174 @@
 
   .reward-button {
     @apply w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-all uppercase tracking-wider;
+  }
+
+  /* --- Игровой экран --- */
+  .game-header-btn {
+    @apply p-3 bg-white/60 dark:bg-white/10 backdrop-blur-md rounded-xl border border-white/40 dark:border-white/10 active:scale-95 shadow-lg transition-all text-gray-700 dark:text-gray-50;
+  }
+  
+  .game-panel {
+    @apply mt-auto w-full bg-white/60 dark:bg-white/10 backdrop-blur-xl p-4 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.3)] z-30 border-t border-white/40 dark:border-white/10 shrink-0;
+  }
+
+  /* Логотип-маска для SVG */
+  .logo-svg {
+    @apply w-full max-w-[400px] h-20;
+    mask-image: url('/image/slovodel_black.svg');
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+    -webkit-mask-image: url('/image/slovodel_black.svg');
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+    background-color: currentColor;
+  }
+
+  /* --- Стили GameScreen --- */
+
+  .swap-modal-title {
+    @apply text-xl font-bold uppercase mb-4 text-indigo-600;
+  }
+  .dark .swap-modal-title {
+    @apply text-indigo-400;
+  }
+
+  .swap-modal-text {
+    @apply text-xs opacity-60 mt-2 text-gray-600;
+  }
+  .dark .swap-modal-text {
+    @apply text-white;
+  }
+
+  .swap-modal-input {
+    @apply w-20 h-20 text-4xl text-center rounded-2xl my-6 uppercase outline-none bg-gray-100 text-gray-900 font-black border border-gray-200 shadow-inner;
+  }
+  .dark .swap-modal-input {
+    @apply bg-black/20 text-white border-white/10;
+  }
+
+  .swap-modal-cancel-btn {
+    @apply w-full py-3 bg-gray-200 rounded-xl font-bold text-gray-500;
+  }
+  .dark .swap-modal-cancel-btn {
+    @apply bg-gray-800;
+  }
+
+  .game-score {
+    @apply font-bold text-indigo-600 text-2xl drop-shadow-md;
+  }
+  .dark .game-score {
+    @apply text-white;
+  }
+
+  .timer-base {
+    @apply text-2xl font-mono font-bold;
+  }
+  .timer-warning {
+    @apply text-red-500 animate-pulse;
+  }
+  .dark .timer-warning {
+    @apply text-red-400;
+  }
+  .timer-normal {
+    @apply text-gray-700;
+  }
+  .dark .timer-normal {
+    @apply text-gray-50;
+  }
+
+  .hint-box {
+    @apply bg-amber-500/10 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-amber-500/20;
+    animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .dark .hint-box {
+    @apply bg-amber-500/20 border-amber-500/30;
+  }
+
+  .hint-label {
+    @apply text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1;
+  }
+  .dark .hint-label {
+    @apply text-amber-300;
+  }
+
+  .hint-text {
+    @apply text-sm font-bold italic text-gray-800 leading-relaxed;
+  }
+  .dark .hint-text {
+    @apply text-white;
+  }
+
+  .hint-word {
+    @apply text-3xl font-bold text-center text-indigo-600 uppercase animate-bounce drop-shadow-md my-2;
+  }
+  .dark .hint-word {
+    @apply text-white;
+  }
+
+  .found-word-item {
+    @apply bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-lg font-bold text-sm text-indigo-700 shadow-sm border border-white/40 flex items-center gap-2;
+    animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .dark .found-word-item {
+    @apply bg-white/10 text-white border-white/10;
+  }
+
+  .found-word-score {
+    @apply bg-green-100 text-green-600 text-[10px] px-1.5 rounded-md font-bold;
+  }
+  .dark .found-word-score {
+    @apply bg-green-900/30 text-green-400;
+  }
+
+  .bonus-btn-container {
+    @apply w-14 h-14 bg-gradient-to-b from-white to-gray-200 rounded-2xl flex items-center justify-center border-2 border-white/50 shadow-xl;
+  }
+  .dark .bonus-btn-container {
+    @apply from-gray-700 to-gray-800;
+  }
+
+  .bonus-badge-normal {
+    @apply bg-black/20 text-gray-800;
+  }
+  .dark .bonus-badge-normal {
+    @apply bg-white/10 text-white;
+  }
+
+  .input-field-container {
+    @apply h-16 mb-4 bg-gray-100/50 rounded-2xl flex items-center justify-center relative px-12 shadow-inner border border-gray-200;
+  }
+  .dark .input-field-container {
+    @apply bg-black/20 border-white/5;
+  }
+
+  .input-text {
+    @apply text-3xl font-bold text-indigo-600 uppercase overflow-hidden whitespace-nowrap drop-shadow-md w-full;
+  }
+  .dark .input-text {
+    @apply text-white;
+  }
+
+  .input-placeholder {
+    @apply opacity-30 text-lg font-normal normal-case italic text-gray-400;
+  }
+  .dark .input-placeholder {
+    @apply text-white/20;
+  }
+
+  .btn-enter-disabled {
+    @apply bg-gray-300 text-gray-500 cursor-not-allowed;
+  }
+  .dark .btn-enter-disabled {
+    @apply bg-gray-700;
+  }
+
+  .confirm-modal-cancel {
+    @apply flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold;
+  }
+  .dark .confirm-modal-cancel {
+    @apply bg-gray-800 text-gray-300;
   }
 }

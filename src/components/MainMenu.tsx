@@ -69,7 +69,7 @@ export const MainMenu = ({
             <h2 className="modal-title text-amber-500">Новое достижение!</h2>
             <p className="text-lg font-bold my-4 italic text-gray-800 dark:text-white">"{streakMilestone}"</p>
             <p className="text-sm opacity-70 mb-6 text-gray-600 dark:text-gray-200">Твоя серия: {streak} дн.</p>
-            <button onClick={() => { playSfx('click'); setStreakMilestone(null); }} className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-black rounded-2xl shadow-lg active:scale-95 transition-transform uppercase">Продолжить</button>
+            <button onClick={() => { playSfx('click'); setStreakMilestone(null); }} className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-transform uppercase">Продолжить</button>
           </div>
         </div>
       )}
@@ -80,7 +80,7 @@ export const MainMenu = ({
           <button onClick={openGlobalRanking} className={`stat-card text-yellow-400`}>
             <Trophy size={24} />
           </button>
-          <div className={`px-2 py-2 rounded-2xl font-black flex items-center gap-2 shadow-lg stat-card`} title="Ударный режим">
+          <div className={`px-2 py-2 rounded-2xl font-bold flex items-center gap-2 shadow-lg stat-card`} title="Ударный режим">
             <span className={`${hasPlayedToday ? "animate-pulse text-red-500" : "opacity-50 grayscale text-gray-500"}`}>
               <Flame size={24} fill={hasPlayedToday ? "currentColor" : "none"} />
             </span>
@@ -105,8 +105,8 @@ export const MainMenu = ({
       </div>
 
       {/* Центральная часть с заголовком */}
-      <div className="flex items-center justify-center relative z-0 min-h-0 mt-10">
-        <h1 className="text-5xl font-bold tracking-normal drop-shadow-lg text-gradient-custom">СЛОВОДЕЛ</h1>
+      <div className="flex items-center justify-center relative z-0 min-h-0 mt-10 w-full px-8">
+        <div className="logo-svg text-gradient-custom drop-shadow-lg"></div>
       </div>
 
       {/* Нижняя панель */}
@@ -137,7 +137,8 @@ export const MainMenu = ({
           onClick={() => { playSfx('click'); openDailyChallenge(); }}
           className={`w-full py-3 font-bold rounded-2xl border transition-all uppercase text-sm flex flex-col items-center justify-center relative overflow-hidden group
             ${isDailyPlayedToday
-              ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20'
+              //******ИСПРАВИТЬ СТИЛЬ */
+              ? 'bg-green-600/10 text-green-600 dark:text-green-400 border-green-500/20'
               : 'bg-gradient-to-r from-amber-400/80 to-orange-500/80 backdrop-blur-md text-white border-white/20 shadow-lg hover:shadow-amber-500/30 active:scale-[0.98]'}`}
         >
           {isDailyPlayedToday ? (

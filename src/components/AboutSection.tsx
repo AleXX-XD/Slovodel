@@ -33,7 +33,7 @@ export const AboutSection = ({ onClose, playSfx, bonuses, onOpenShop, onSubmitFe
         <div className="flex justify-between items-center mb-6 shrink-0">
           <div className="flex items-center gap-3">
             <Info size={28} className="modal-header-icon" />
-            <h2 className="text-xl font-black uppercase tracking-tight">Помощь</h2>
+            <h2 className="text-xl font-bold uppercase tracking-tight">Помощь</h2>
           </div>
           <button onClick={() => { playSfx('click'); onClose(); }} className="modal-close-btn">
             <X size={24} className="modal-icon" />

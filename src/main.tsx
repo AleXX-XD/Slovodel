@@ -7,13 +7,13 @@ import { createClient } from '@supabase/supabase-js';
 import { getDailyDateString } from './utils/gameUtils';
 
 // Инициализация Supabase
-const SUPABASE_URL = 'https://viyqhdvziizfvokmkrgb.supabase.co';
-// ВСТАВЬТЕ СЮДА ВАШ НАСТОЯЩИЙ ANON KEY ИЗ SUPABASE DASHBOARD -> PROJECT SETTINGS -> API
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpeXFoZHZ6aWl6ZnZva21rcmdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc1MjkxOTAsImV4cCI6MjA4MzEwNTE5MH0.NtWy9MPd1UIaL_nJcfp6JxhqbHE6lN2nUAYFmC2nyuM'; // <-- Замените это на ваш длинный ключ anon
+// Используем переменные окружения для безопасности
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Добавляем проверку на существование Telegram, чтобы не падало на ПК
-const tg = (window as any).Telegram?.WebApp;
+const tg = window.Telegram?.WebApp;
 
 // Функция для сохранения данных пользователя (очки + бонусы)
 const saveUserData = async (data: {
@@ -357,11 +357,14 @@ const getActiveChallenge = async () => {
 const fetchUserRank = async (telegramId: number) => {
   try {
     const { data, error } = await supabase
-      .rpc('get_player_rank', { p_telegram_id: telegramId })
-      .single();
+      .rpc('get_player_rank', { p_telegram_id: telegramId });
     
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
+    if (error) throw error;
+
+    if (typeof data === 'number') return { rank: data };
+    if (Array.isArray(data) && data.length > 0) return data[0];
+
+    return null;
   } catch (e) {
     console.error("Ошибка загрузки ранга игрока:", e);
     return null;

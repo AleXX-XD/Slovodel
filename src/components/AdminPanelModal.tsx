@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Shield, MessageCircle, BookPlus, Send, Check, Trash2, Edit2, Save, Search, Reply, Archive } from 'lucide-react';
+import { ArrowLeft, Shield, MessageCircle, BookPlus, Send, Check, Trash2, Edit2, Save, Search, Reply, Archive, Megaphone, X, Eye } from 'lucide-react';
 import { getDictionary } from '../utils/dictionary';
 
 interface AdminPanelModalProps {
@@ -13,10 +13,12 @@ interface AdminPanelModalProps {
   onReply: (feedbackId: number, telegramId: number, text: string) => Promise<boolean>;
   onArchive: (id: number) => Promise<boolean>;
   onDelete: (id: number) => Promise<boolean>;
+  onBroadcast: (message: string) => Promise<boolean>;
+  onTestModal: (type: string) => void;
 }
 
-export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWord, fetchAdminCustomWords, deleteCustomWord, updateCustomWord, onReply, onArchive, onDelete }: AdminPanelModalProps) => {
-  const [activeTab, setActiveTab] = useState<'feedback' | 'dictionary'>('feedback');
+export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWord, fetchAdminCustomWords, deleteCustomWord, updateCustomWord, onReply, onArchive, onDelete, onBroadcast, onTestModal }: AdminPanelModalProps) => {
+  const [activeTab, setActiveTab] = useState<'feedback' | 'dictionary' | 'broadcast' | 'testing'>('feedback');
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [customWords, setCustomWords] = useState<any[]>([]);
   const [newWord, setNewWord] = useState('');
@@ -29,6 +31,7 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
   const [replyingId, setReplyingId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
   const [feedbackFilter, setFeedbackFilter] = useState<'all' | 'new' | 'replied' | 'archived'>('all');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
 
   useEffect(() => {
     if (activeTab === 'feedback') {
@@ -158,30 +161,47 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
     }
   };
 
+  const handleBroadcast = async () => {
+    if (!broadcastMessage.trim()) return;
+    if (window.confirm('Вы уверены, что хотите отправить это сообщение ВСЕМ игрокам?')) {
+      const success = await onBroadcast(broadcastMessage);
+      if (success) {
+        setBroadcastMessage('');
+        alert('Рассылка поставлена в очередь!');
+      } else {
+        alert('Ошибка создания рассылки');
+      }
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/70 z-[400] flex items-center justify-center p-4 backdrop-blur-md">
-      <div className="bg-white/80 dark:bg-white/10 backdrop-blur-xl rounded-3xl w-full max-w-sm flex flex-col overflow-hidden shadow-2xl animate-pop border border-white/20 h-[85vh] relative">
+    <div className="h-full flex flex-col bg-gray-50 dark:bg-slate-900 animate-in fade-in duration-300">
+      <div className="flex flex-col h-full p-4">
         
         {/* Header */}
-        <div className="bg-white/50 dark:bg-white/5 p-6 text-gray-900 dark:text-white shrink-0 border-b border-white/10">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-black uppercase tracking-tight flex items-center gap-2">
-              <Shield className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-              Админка
-            </h2>
-            <button onClick={() => { playSfx('click'); onClose(); }} className="p-2 bg-black/5 dark:bg-white/10 rounded-xl hover:bg-black/10 dark:hover:bg-white/20 transition-colors">
-              <X size={24} />
-            </button>
+        <div className="flex justify-between items-center mb-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <Shield size={28} className="modal-header-icon" />
+            <h2 className="text-xl font-bold uppercase tracking-tight text-gray-900 dark:text-white">Админка</h2>
           </div>
+          <button onClick={() => { playSfx('click'); onClose(); }} className="p-2 bg-white/70 dark:bg-white/10 rounded-xl hover:bg-black/10 transition-colors">
+            <ArrowLeft size={24} className="text-gray-800 dark:text-white" />
+          </button>
+        </div>
           
-          <div className="flex p-1 bg-gray-200/50 dark:bg-black/20 rounded-xl">
-            <button onClick={() => setActiveTab('feedback')} className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center justify-center gap-2 ${activeTab === 'feedback' ? 'bg-white dark:bg-white/10 shadow-sm text-indigo-600 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+        <div className="tabs-group mb-4 shrink-0">
+            <button onClick={() => setActiveTab('feedback')} className={`tab-item ${activeTab === 'feedback' ? 'tab-item-active' : ''}`}>
               <MessageCircle size={16} /> Отзывы
             </button>
-            <button onClick={() => setActiveTab('dictionary')} className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center justify-center gap-2 ${activeTab === 'dictionary' ? 'bg-white dark:bg-white/10 shadow-sm text-indigo-600 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+            <button onClick={() => setActiveTab('dictionary')} className={`tab-item ${activeTab === 'dictionary' ? 'tab-item-active' : ''}`}>
               <BookPlus size={16} /> Словарь
             </button>
-          </div>
+            <button onClick={() => setActiveTab('broadcast')} className={`tab-item ${activeTab === 'broadcast' ? 'tab-item-active' : ''}`}>
+              <Megaphone size={16} /> Рассылка
+            </button>
+            <button onClick={() => setActiveTab('testing')} className={`tab-item ${activeTab === 'testing' ? 'tab-item-active' : ''}`}>
+              <Eye size={16} /> UI Тест
+            </button>
         </div>
 
         {/* Content */}
@@ -243,7 +263,7 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
               </div>
             ))}
             </>
-          ) : (
+          ) : activeTab === 'dictionary' ? (
             <div className="space-y-4">
               <div className="bg-white/40 dark:bg-white/5 p-4 rounded-2xl border border-white/10">
                 <label className="text-xs font-bold uppercase opacity-60 mb-2 block">Поиск и проверка</label>
@@ -304,6 +324,38 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+          ) : activeTab === 'broadcast' ? (
+            <div className="space-y-4">
+              <div className="bg-white/40 dark:bg-white/5 p-4 rounded-2xl border border-white/10">
+                <label className="text-xs font-bold uppercase opacity-60 mb-2 block text-gray-800 dark:text-white">Сообщение для всех игроков</label>
+                <textarea
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                  className="w-full bg-white/50 dark:bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none min-h-[120px] mb-4 text-gray-900 dark:text-white placeholder:text-gray-500"
+                  placeholder="Введите текст рассылки..."
+                />
+                <button onClick={handleBroadcast} disabled={!broadcastMessage.trim()} className={`w-full py-3 rounded-xl text-white font-bold transition-all ${!broadcastMessage.trim() ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 active:scale-95'}`}>
+                  Отправить
+                </button>
+                <p className="text-[10px] opacity-50 mt-2 text-center text-gray-600 dark:text-gray-400">Сообщение будет отправлено всем пользователям, запустившим бота.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-white/40 dark:bg-white/5 p-4 rounded-2xl border border-white/10">
+                <label className="text-xs font-bold uppercase opacity-60 mb-4 block text-gray-800 dark:text-white">Проверка визуального стиля</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => onTestModal('reward')} className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">🎁 Награда</button>
+                  <button onClick={() => onTestModal('achievements')} className="p-3 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">🏆 Достижения</button>
+                  <button onClick={() => onTestModal('collection')} className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">📚 Коллекция</button>
+                  <button onClick={() => onTestModal('shop')} className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">🛍️ Магазин</button>
+                  <button onClick={() => onTestModal('daily')} className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">⚡ Дейлик</button>
+                  <button onClick={() => onTestModal('leaderboard')} className="p-3 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">🥇 Рейтинг</button>
+                  <button onClick={() => onTestModal('about')} className="p-3 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">ℹ️ Помощь</button>
+                  <button onClick={() => onTestModal('rank_up')} className="p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">👑 Повышение</button>
+                </div>
               </div>
             </div>
           )}

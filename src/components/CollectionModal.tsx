@@ -27,7 +27,7 @@ export const CollectionModal = ({ words, onClose, playSfx }: CollectionModalProp
           <div className="flex items-center gap-3">
             <BookOpenText size={28} className="modal-header-icon" />
             <div>
-              <h2 className="text-xl font-black uppercase tracking-tight">Моя коллекция</h2>
+              <h2 className="text-xl font-bold uppercase tracking-tight">Моя коллекция</h2>
               <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Собрано редкостей: {words.length}</p>
             </div>
           </div>
