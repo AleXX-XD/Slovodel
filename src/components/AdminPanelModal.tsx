@@ -347,14 +347,8 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
               <div className="bg-white/40 dark:bg-white/5 p-4 rounded-2xl border border-white/10">
                 <label className="text-xs font-bold uppercase opacity-60 mb-4 block text-gray-800 dark:text-white">Проверка визуального стиля</label>
                 <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => onTestModal('reward')} className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">🎁 Награда</button>
-                  <button onClick={() => onTestModal('achievements')} className="p-3 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">🏆 Достижения</button>
-                  <button onClick={() => onTestModal('collection')} className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">📚 Коллекция</button>
-                  <button onClick={() => onTestModal('shop')} className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">🛍️ Магазин</button>
-                  <button onClick={() => onTestModal('daily')} className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">⚡ Дейлик</button>
-                  <button onClick={() => onTestModal('leaderboard')} className="p-3 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">🥇 Рейтинг</button>
-                  <button onClick={() => onTestModal('about')} className="p-3 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">ℹ️ Помощь</button>
-                  <button onClick={() => onTestModal('rank_up')} className="p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">👑 Повышение</button>
+                  <button onClick={() => { playSfx('click'); onTestModal('reward') }} className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">🎁 Награда</button>
+                  <button onClick={() => { playSfx('click'); onTestModal('rank_up') }} className="p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">👑 Повышение</button>
                 </div>
               </div>
             </div>

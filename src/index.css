@@ -49,12 +49,12 @@
 @layer utilities {
   /* Специальный класс для градиентного текста, работающий в Safari/iOS */
   .text-gradient-custom {
-    @apply text-purple-700;
+    @apply text-violet-800;
 
   }
 
   .dark .text-gradient-custom {
-    @apply text-purple-300;
+    @apply text-violet-200;
 
   }
 
@@ -107,6 +107,18 @@
     @apply text-white;
   }
 
+  .game-day {
+    @apply bg-gradient-to-r from-amber-400/80 to-orange-500/80 backdrop-blur-md text-white border-white/20 shadow-lg hover:shadow-amber-500/30 active:scale-[0.98];
+  }
+
+  .game-day-end {
+    @apply bg-green-600/10 text-green-600 border-green-500/20
+  }
+
+  .dark .game-day-end {
+    @apply dark:text-green-400
+  }
+
   .game_easy {
     @apply text-green-600 w-full py-4 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-green-500/20 active:scale-[0.98] transition-all uppercase text-sm hover:bg-green-500/10;
   }
@@ -123,7 +135,7 @@
     @apply bg-white/10 text-blue-500 border-blue-400/30 hover:bg-blue-400/20;
   } 
 
-      .game_hard {
+  .game_hard {
     @apply text-red-600 w-full py-4 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-red-500/20 active:scale-[0.98] transition-all uppercase text-sm hover:bg-red-500/10;
   }
   
@@ -155,7 +167,7 @@
   }
 
   .modal-content {
-    @apply bg-white/80 backdrop-blur-2xl rounded-3xl p-6 w-[95%] max-w-md text-center shadow-2xl border border-white/40;
+    @apply bg-white/80 backdrop-blur-2xl rounded-3xl p-4 w-[95%] max-w-md text-center shadow-2xl border border-white/40;
     @apply text-gray-900;
     @apply max-h-[85vh] flex flex-col; /* Ограничение высоты и флекс для скролла */
     animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -433,7 +445,7 @@
     @apply bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-8 text-center shadow-2xl border border-white/20 relative overflow-hidden;
     animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
-  /* Примечание: dark:bg-slate-900 здесь работает, так как это не внутри @apply с другими классами, но для единообразия можно разделить */
+
   .dark .reward-modal-content {
     @apply bg-slate-900;
   }
@@ -473,7 +485,7 @@
   }
 
   .tab-item {
-    @apply flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center justify-center gap-2 cursor-pointer;
+    @apply flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all flex items-center justify-center gap-1 cursor-pointer;
     @apply text-gray-500;
   }
   .dark .tab-item {
@@ -488,6 +500,29 @@
   }
 
   /* --- Компоненты Лидерборда --- */
+  .leaderboard-place {
+    @apply font-bold w-6 text-center text-gray-500;
+  }
+
+  .dark .leaderboard-place {
+    @apply text-gray-200;
+  }
+
+  .leaderboard-total-players{
+    @apply text-[10px] uppercase font-bold opacity-50 text-gray-500;
+  }
+
+  .dark .leaderboard-total-players{
+    @apply text-gray-200;
+  }
+
+  .leaderboard-total-count{
+    @apply font-bold text-indigo-600;
+  }
+
+  .dark .leaderboard-total-count{
+    @apply text-indigo-200;
+  }
   .leaderboard-scroll {
     @apply overflow-y-auto pr-1 space-y-2 flex-1 my-2;
     scrollbar-width: none;
@@ -497,7 +532,7 @@
   }
 
   .leaderboard-card {
-    @apply flex items-center gap-3 p-3 rounded-xl border transition-all shadow-sm;
+    @apply flex items-center gap-2 p-1 rounded-xl border transition-all shadow-sm;
     @apply bg-white/50 backdrop-blur-sm border-white/30;
   }
   .dark .leaderboard-card {
@@ -512,7 +547,7 @@
   }
 
   .leaderboard-name {
-    @apply font-bold truncate text-gray-800;
+    @apply text-sm font-bold truncate text-gray-800;
   }
   .dark .leaderboard-name {
     @apply text-white;
@@ -526,17 +561,25 @@
   }
 
   .leaderboard-subtext {
-    @apply text-[10px] font-bold opacity-50 uppercase text-gray-600;
+    @apply text-[10px] font-normal opacity-50 uppercase text-gray-900 truncate;
   }
   .dark .leaderboard-subtext {
-    @apply text-white/70;
+    @apply text-white/90;
   }
 
   .leaderboard-points {
-    @apply font-bold text-amber-600 w-20 text-right shrink-0;
+    @apply text-sm font-bold text-amber-600 w-20 text-right shrink-0;
   }
   .dark .leaderboard-points {
     @apply text-amber-300;
+  }
+
+  .leaderboard-close {
+    @apply w-full py-3 bg-white/60 backdrop-blur-md text-indigo-700 font-bold rounded-2xl border border-white/40 active:scale-95 shadow-lg hover:bg-white/80 uppercase text-sm;
+  }
+
+  .dark .leaderboard-close {
+    @apply bg-white/20 text-white border-white/20 hover:bg-white/30;
   }
 
   .reward-box-label {
@@ -557,6 +600,96 @@
     @apply w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-all uppercase tracking-wider;
   }
 
+   /* --- Дневное испытание--- */
+
+  .daychallenge-bg{
+    @apply bg-amber-500/10 p-4 rounded-2xl border border-amber-500/20;
+  }
+
+  .dark .daychallenge-bg {
+    @apply bg-amber-500/20;
+  }
+
+  .daychallenge-callendar{
+    @apply flex items-center gap-2 text-amber-700 font-bold uppercase text-xs tracking-wider;
+  }
+
+  .dark .daychallenge-callendar{
+    @apply text-amber-300;
+  }
+
+  .daychallenge-points{
+    @apply font-bold text-amber-700 ;
+  }
+
+  .dark .daychallenge-points{
+    @apply text-amber-300 ;
+  }
+
+  .daychallenge-info{
+    @apply text-sm text-gray-800 opacity-80;
+  }
+
+  .daychallenge-button{
+    @apply w-full py-4 bg-white/60 backdrop-blur-sm font-bold rounded-2xl border shadow-lg transition-all text-sm flex items-center justify-between px-6;
+  }
+
+  .dark .daychallenge-button{
+    @apply bg-white/10;
+  }
+
+  .dark .daychallenge-info{
+    @apply text-white;
+  }
+
+  .daychallenge-easy-color{
+    @apply text-green-600;
+  }
+
+  .dark .daychallenge-easy-color{
+    @apply text-green-400;
+  }
+
+  .daychallenge-easy-border{
+    @apply border-green-600/20;
+  }
+
+  .dark .daychallenge-easy-border{
+    @apply border-green-400/30;
+  }
+
+    .daychallenge-normal-color{
+    @apply text-blue-600;
+  }
+
+  .dark .daychallenge-normal-color{
+    @apply text-blue-400;
+  }
+
+  .daychallenge-normal-border{
+    @apply border-blue-600/20;
+  }
+
+  .dark .daychallenge-normal-border{
+    @apply border-blue-400/30;
+  }
+
+      .daychallenge-hard-color{
+    @apply text-red-600;
+  }
+
+  .dark .daychallenge-hard-color{
+    @apply text-red-400;
+  }
+
+  .daychallenge-hard-border{
+    @apply border-red-600/20;
+  }
+
+  .dark .daychallenge-hard-border{
+    @apply border-red-400/30;
+  }
+
   /* --- Игровой экран --- */
   .game-header-btn {
     @apply p-3 bg-white/60 dark:bg-white/10 backdrop-blur-md rounded-xl border border-white/40 dark:border-white/10 active:scale-95 shadow-lg transition-all text-gray-700 dark:text-gray-50;
@@ -574,6 +707,20 @@
     mask-position: center;
     mask-size: contain;
     -webkit-mask-image: url('/image/slovodel_black.svg');
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+    background-color: currentColor;
+  }
+
+  /* Логотип для экрана загрузки */
+  .logo-loading {
+    @apply w-full max-w-[400px] h-20;
+    mask-image: url('/image/logo.svg');
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+    -webkit-mask-image: url('/image/logo.svg');
     -webkit-mask-repeat: no-repeat;
     -webkit-mask-position: center;
     -webkit-mask-size: contain;

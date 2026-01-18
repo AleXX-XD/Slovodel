@@ -1,4 +1,4 @@
-import { Trophy, X } from 'lucide-react';
+import { Trophy, X, Zap } from 'lucide-react';
  
 interface LeaderboardModalProps {
   data: any[];
@@ -10,7 +10,7 @@ interface LeaderboardModalProps {
     score: number;
     username: string;
     avatar_url: string;
-  } | null;
+  } | null | undefined;
   userScore?: number;
   totalPlayers?: number;
   getUserRank: (score: number) => string;
@@ -20,18 +20,18 @@ interface LeaderboardModalProps {
 }
 
 export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, currentUserRankData, totalPlayers, getUserRank, activeTab, onTabChange, isLoading }: LeaderboardModalProps) => {
-  
+
   const getPlaceIcon = (index: number) => {
     if (index === 0) return <span className="text-xl">🥇</span>;
     if (index === 1) return <span className="text-xl">🥈</span>;
     if (index === 2) return <span className="text-xl">🥉</span>;
-    return <span className="font-bold w-6 text-center text-gray-500 dark:text-gray-400">{index + 1}.</span>;
+    return <span className="leaderboard-place">{index + 1}.</span>;
   };
   
+
   return (
     <div className="modal-overlay z-[400]">
       <div className="modal-content h-[85vh] flex flex-col">
-        
         {/* Header */}
         <div className="flex justify-between items-center mb-4 shrink-0">
           <div className="flex items-center gap-3">
@@ -42,39 +42,39 @@ export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, curren
             <X size={24} className="modal-icon" />
           </button>
         </div>
-        
+
         {/* Tabs */}
         <div className="tabs-group mb-4 shrink-0">
           <button 
             onClick={() => onTabChange('all')}
             className={`tab-item ${activeTab === 'all' ? 'tab-item-active' : ''}`}
           >
-            За всё время
+           Всё время
           </button>
           <button 
             onClick={() => onTabChange('daily')}
             className={`tab-item ${activeTab === 'daily' ? 'tab-item-active' : ''}`}
           >
-            Сегодня
+            <Zap size={12} fill="currentColor"/>Сегодня         
           </button>
           <button 
             onClick={() => onTabChange('previous')}
             className={`tab-item ${activeTab === 'previous' ? 'tab-item-active' : ''}`}
           >
-            Вчера
+            <Zap size={12} fill="currentColor"/>Вчера
           </button>
         </div>
         
         {/* Total Players Count */}
         <div className="text-center mb-2 shrink-0">
-           <p className="text-[10px] uppercase font-bold opacity-50 text-gray-500 dark:text-gray-400">
-             {activeTab === 'all' ? 'Всего игроков:' : activeTab === 'daily' ? 'Участников сегодня:' : 'Участников вчера:'} <span className="text-indigo-600 dark:text-indigo-300 font-bold">{totalPlayers || 0}</span>
+           <p className="leaderboard-total-players">
+             {activeTab === 'all' ? 'Всего игроков:' : activeTab === 'daily' ? 'Испытание дня | Участников сегодня:' : 'Испытание дня | Участников вчера:'} <span className="leaderboard-total-count">{totalPlayers || 0}</span>
            </p>
         </div>
 
         {/* List */}
         <div className="leaderboard-scroll">
-        {isLoading ? (
+          {isLoading ? (
           <p className="text-center opacity-50">Загрузка данных...</p>
         ) : data.length === 0 ? (
           <p className="text-center opacity-50">Участники не найдены</p>
@@ -94,7 +94,7 @@ export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, curren
                     <div className="w-6 flex justify-center items-center">
                       {getPlaceIcon(rank - 1)}
                     </div>
-                    <img src={player.avatar_url || './image/book_face_1.png'} alt="avatar" className="w-10 h-10 rounded-full bg-indigo-100" />
+                    <img src={player.avatar_url || './image/book_face_1.png'} alt="avatar" className="w-8 h-8 rounded-full bg-indigo-100" />
                     <div className="flex-1 min-w-0 text-left">
                       <p className={`leaderboard-name ${isCurrentUser ? 'leaderboard-name-active' : ''}`}>{player.name}</p>
                       <p className="leaderboard-subtext">{activeTab === 'all' ? getUserRank(player.score) : 'Очки за день'}</p>
@@ -105,9 +105,11 @@ export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, curren
               });
             })()}
 
-            {currentUserRankData && activeTab === 'all' && (
+            {(currentUserRankData) && activeTab === 'all' && (
               <>
-                <div className="text-center font-bold opacity-50 my-4">...</div>
+                {currentUserRankData.rank > data.length + 1 && (
+                  <div className="text-center font-bold opacity-50 my-4">...</div>
+                )}
                 <div className="leaderboard-card leaderboard-card-active">
                   <div className="w-6 flex justify-center items-center">
                     {getPlaceIcon(currentUserRankData.rank - 1)}
@@ -124,12 +126,12 @@ export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, curren
           </>
         )}
       </div>
-      
+
       {/* Footer */}
       <div className="mt-2 shrink-0">
-        <button onClick={() => { playSfx('click'); onClose(); }} className="w-full py-3 bg-white/60 dark:bg-white/20 backdrop-blur-md text-indigo-700 dark:text-white font-bold rounded-2xl border border-white/40 dark:border-white/20 active:scale-95 shadow-lg hover:bg-white/80 dark:hover:bg-white/30 uppercase text-sm">Закрыть</button>
+        <button onClick={() => { playSfx('click'); onClose(); }} className="leaderboard-close">Закрыть</button>
       </div>
-
+    
     </div>
   </div>
   );

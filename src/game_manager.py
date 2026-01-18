@@ -13,7 +13,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # Время одного раунда в секундах (24 часа = 86400)
-UPDATE_INTERVAL = 24 * 60 * 60 
+POLL_INTERVAL = 600 # Проверка каждые 10 минут
 
 # Инициализация клиента Supabase
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -118,16 +118,79 @@ def process_broadcasts():
     except Exception as e:
         print(f"Ошибка в process_broadcasts: {e}")
 
-# --- ОСНОВНАЯ ЛОГИКА ---
-def run_game_cycle():
-    print(f"\n[{datetime.now().strftime('%H:%M:%S')}] --- НАЧАЛО ОБНОВЛЕНИЯ ---")
-    
-    # Сначала обрабатываем рассылки
-    process_broadcasts()
-    
+# --- ОТПРАВКА РЕЗУЛЬТАТОВ (В 06:00 UTC) ---
+def process_results_notification():
     try:
-        # 1. Получаем ID текущего испытания из таблицы challenges
+        now_utc = datetime.now(timezone.utc)
+        # Если время меньше 06:00 UTC, ничего не делаем
+        if now_utc.hour < 6:
+            return
+
+        # Получаем ID текущего активного испытания
         response = supabase.table("challenges").select("id").order("id", desc=True).limit(1).execute()
+        if not response.data: return
+        
+        current_active_id = response.data[0]['id']
+        # Нас интересует предыдущее испытание, которое закончилось сегодня ночью
+        target_id = current_active_id - 1
+        
+        if target_id < 1: return
+
+        # Проверяем, была ли уже рассылка для этого ID (ищем системный флаг)
+        flag_msg = f"[SYSTEM] Results sent for challenge {target_id}"
+        check = supabase.table("broadcasts").select("id").eq("message", flag_msg).execute()
+        if check.data:
+            return # Рассылка уже была
+
+        print(f"[{now_utc.strftime('%H:%M:%S')}] Начинаем рассылку результатов за испытание №{target_id}...")
+
+        # Получаем результаты
+        scores_response = supabase.table("daily_scores").select("telegram_id, score").eq("challenge_id", target_id).order("score", desc=True).execute()
+        scores = scores_response.data
+
+        if scores:
+            current_rank = 1
+            for i, player in enumerate(scores):
+                if i > 0 and player['score'] < scores[i-1]['score']:
+                    current_rank += 1
+                
+                # Отправляем только топ-3
+                if current_rank <= 3:
+                    msg = f"🏁 Итоги Испытания №{target_id}\n\nВы заняли {current_rank}-е место с результатом {player['score']} очков!\n🎉 Награда уже начислена!"
+                    try:
+                        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={
+                            "chat_id": player['telegram_id'],
+                            "text": msg
+                        }, timeout=5)
+                        time.sleep(0.1)
+                    except Exception as e:
+                        print(f"Ошибка отправки: {e}")
+
+        # Ставим флаг, что рассылка выполнена
+        supabase.table("broadcasts").insert({"message": flag_msg, "status": "sent"}).execute()
+        print(f"Рассылка результатов №{target_id} завершена.")
+
+    except Exception as e:
+        print(f"Ошибка в process_results_notification: {e}")
+
+# --- ЕЖЕДНЕВНОЕ ОБНОВЛЕНИЕ ---
+def process_daily_update():
+    try:
+        # 1. Проверяем, пора ли обновлять испытание
+        response = supabase.table("challenges").select("*").order("id", desc=True).limit(1).execute()
+        
+        if response.data:
+            last_challenge = response.data[0]
+            end_time_str = last_challenge.get('end_time')
+            if end_time_str:
+                end_time = datetime.fromisoformat(end_time_str.replace('Z', '+00:00'))
+                # Если время еще не пришло, выходим
+                if datetime.now(timezone.utc) < end_time:
+                    return
+
+        print(f"\n[{datetime.now().strftime('%H:%M:%S')}] --- НАЧАЛО ЕЖЕДНЕВНОГО ОБНОВЛЕНИЯ ---")
+
+        # Получаем ID текущего (завершаемого) испытания
         current_id = str(response.data[0]['id']) if response.data and len(response.data) > 0 else None
         
         scores = []
@@ -163,41 +226,25 @@ def run_game_cycle():
                 
                 if bonus_amount > 0:
                     # Начисляем бонусы в таблицу leaderboard
+                    # Используем RPC вызов или прямой update (здесь упрощенно прямой update)
+                    # Логика начисления бонусов остается прежней, убираем только отправку сообщений
+                    pass # (Код начисления бонусов скрыт для краткости, он остается как был, но без msg)
+                    
+                    # ВАЖНО: В реальном коде оставьте блок update_data и supabase.table("leaderboard").update(...)
+                    # Я восстанавливаю его ниже полностью, чтобы не сломать логику
                     user_data = supabase.table("leaderboard").select("*").eq("telegram_id", player['telegram_id']).single().execute()
                     if user_data.data:
                         u = user_data.data
-                        
                         update_data = {
                             "bonus_time": (u.get('bonus_time', 0) or 0) + bonus_amount,
                             "bonus_hint": (u.get('bonus_hint', 0) or 0) + bonus_amount,
                             "bonus_swap": (u.get('bonus_swap', 0) or 0) + bonus_amount,
                             "bonus_wildcard": (u.get('bonus_wildcard', 0) or 0) + bonus_amount
                         }
-
                         if rank == 1: update_data["daily_1_place"] = (u.get('daily_1_place', 0) or 0) + 1
                         elif rank == 2: update_data["daily_2_place"] = (u.get('daily_2_place', 0) or 0) + 1
                         elif rank == 3: update_data["daily_3_place"] = (u.get('daily_3_place', 0) or 0) + 1
-
                         supabase.table("leaderboard").update(update_data).eq("telegram_id", player['telegram_id']).execute()
-                        reward_text = f"\n\n🎁 ВАША НАГРАДА:\nПо {bonus_amount} шт. каждой подсказки!"
-
-                # Текст сообщения
-                msg = f"🏁 Итоги Испытания №{current_id}\n\n"
-                msg += f"Вы заняли {rank}-е место с результатом {player['score']} очков!"
-                if rank <= 3:
-                    msg += f"\n🎉 ПОЗДРАВЛЯЕМ! Вы вошли в тройку лидеров!{reward_text}"
-                else:
-                    msg += f"\nСпасибо за участие! Новое испытание уже началось!"
-                
-                # Отправка в Telegram (ТОЛЬКО ПОБЕДИТЕЛЯМ, чтобы не перегружать скрипт)
-                if rank <= 3:
-                    try:
-                        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={
-                            "chat_id": player['telegram_id'],
-                            "text": msg
-                        }, timeout=5) # Добавлен таймаут 5 секунд
-                    except Exception as e:
-                        print(f"Ошибка отправки сообщения игроку {player['telegram_id']}: {e}")
         
         # 4. Генерируем и создаем НОВОЕ испытание
         new_letters = {
@@ -206,11 +253,10 @@ def run_game_cycle():
             "6": generate_grid(6)
         }
         
-        # Рассчитываем время окончания (следующая полночь по UTC)
-        # Это синхронизирует таймер в игре с расписанием GitHub Actions (00:00 UTC)
+        # Рассчитываем время окончания (00:00 UTC - Полночь)
         now_utc = datetime.now(timezone.utc)
-        next_midnight = now_utc.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-        end_time = next_midnight.isoformat()
+        next_deadline = now_utc.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        end_time = next_deadline.isoformat()
 
         # Вставляем в таблицу challenges (ID создастся автоматически)
         new_challenge = supabase.table("challenges").insert({
@@ -235,11 +281,14 @@ if __name__ == "__main__":
 
     # Если передан аргумент "loop", запускаем вечный цикл (для локального теста)
     if len(sys.argv) > 1 and sys.argv[1] == "loop":
-        print(f"Бот-менеджер запущен в режиме цикла. Интервал: {UPDATE_INTERVAL} сек.")
+        print(f"Бот-менеджер запущен в режиме цикла. Интервал опроса: {POLL_INTERVAL} сек.")
         while True:
-            run_game_cycle()
-            time.sleep(UPDATE_INTERVAL)
+            process_broadcasts()
+            process_daily_update()
+            time.sleep(POLL_INTERVAL)
     else:
         # Иначе запускаем один раз (для GitHub Actions)
-        print("Запуск разового обновления...")
-        run_game_cycle()
+        print("Запуск разовой проверки...")
+        process_broadcasts()
+        # В разовом режиме принудительно не запускаем, если время не пришло (логика внутри функции)
+        process_daily_update()

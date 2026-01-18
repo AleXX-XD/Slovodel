@@ -45,11 +45,15 @@ interface Player {
   telegram_id?: number;
   avatar_url?: string;
 }
-export default function App({ saveUserData, saveDailyScore, getUserData, getActiveChallenge, getLeaderboard, getDailyLeaderboard, fetchPreviousDailyLeaderboard, getUserDailyScore, fetchUserRank, saveFeedback, fetchFeedbacks, addCustomWord, fetchCustomWords, fetchAdminCustomWords, deleteCustomWord, updateCustomWord, sendFeedbackReply, archiveFeedback, deleteFeedback, sendBroadcast, handleTestModal, tg }: any) {
+export default function App({ saveUserData, saveDailyScore, getUserData, getActiveChallenge, getLeaderboard, getDailyLeaderboard, fetchPreviousDailyLeaderboard, getUserDailyScore, fetchUserRank, saveFeedback, fetchFeedbacks, addCustomWord, fetchCustomWords, fetchAdminCustomWords, deleteCustomWord, updateCustomWord, sendFeedbackReply, archiveFeedback, deleteFeedback, sendBroadcast, tg }: any) {
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
   const USER_NAME = tgUser ? (tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '')) : 'Анонимный Лингвист';
   
-  const ADMIN_ID = 818790686; // ЗАМЕНИТЕ НА ВАШ TELEGRAM ID
+  // Получаем список ID администраторов из переменных окружения (VITE_ADMIN_IDS="123,456")
+  const ADMIN_IDS = (import.meta.env.VITE_ADMIN_IDS || '')
+    .split(',')
+    .map((id: string) => Number(id.trim()))
+    .filter((id: number) => !isNaN(id));
   
   const [status, setStatus] = useState<GameStatus>('menu');
   const [isDictLoading, setIsDictLoading] = useState(true);
@@ -118,7 +122,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   // Новые состояния для статистики
   const [daysPlayed, setDaysPlayed] = useState(0);
   const [dailyPlaces, setDailyPlaces] = useState({ first: 0, second: 0, third: 0 });
-  const [userRank] = useState(0);
+  const [userRank, setUserRank] = useState(0);
 
   useEffect(() => {
     localStorage.setItem('slovodel_rare_words', JSON.stringify(rareWords));
@@ -143,6 +147,20 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   const [lastRoundRecordBeaten, setLastRoundRecordBeaten] = useState<number | null>(null);
   const [newRankReached, setNewRankReached] = useState<string | null>(null);
   const [activeReward, setActiveReward] = useState<{ achievement: string; reward: { type: string; amount: number; } } | null>(null);
+
+  // Функция для тестирования UI из админки
+  const handleTestModal = (type: string) => {
+    setStatus('menu'); // Закрываем админку, чтобы увидеть результат
+    setTimeout(() => {
+      switch (type) {
+        case 'reward': setActiveReward({ achievement: 'Тестовая награда', reward: { type: 'hint', amount: 5 } }); playSfx('reward_fanfare'); break;
+        case 'rank_up': 
+          setNewRankReached('Оракул Словодела'); 
+          setStatus('results');
+          break;
+      }
+    }, 100);
+  };
 
   const showToast = useCallback((text: string, type: 'good' | 'bad') => {
     setMessage({ text, type });
@@ -344,6 +362,15 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
             third: data.daily_3_place ?? 0
           });
 
+          // Загружаем место в рейтинге
+          if (fetchUserRank) {
+            fetchUserRank(tgUser.id).then((rankData: any) => {
+              if (rankData && typeof rankData.rank === 'number') {
+                setUserRank(rankData.rank);
+              }
+            });
+          }
+
         } else { // Новый пользователь (или первый запуск)
           // Сбрасываем все значения до дефолтных, чтобы не использовать чужие данные из localStorage
           setTotalScore(0);
@@ -395,7 +422,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         });
       }
     }
-  }, [tgUser, getUserData, getUserDailyScore, currentChallengeId]);
+  }, [tgUser, getUserData, getUserDailyScore, currentChallengeId, fetchUserRank]);
 
   const finishGame = useCallback(() => {
     const finalScore = score;
@@ -969,10 +996,9 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     return (
       // Используем тот же фон, что и в основной игре, чтобы не было "бледности" при загрузке
       <div className="app-wrapper items-center justify-center p-6">
-        <div className="spinner w-12 h-12 text-indigo-600 mb-4 border-4 border-indigo-200 border-t-indigo-600 rounded-full"></div>
-        {/* Применяем новый класс градиента */}
-        <h2 className="text-2xl font-black uppercase text-gradient-custom">СЛОВОДЕЛ</h2>
-        <p className="text-sm opacity-50 mt-2 text-gray-900 dark:text-white">Готовим буквы...</p>
+        <div className="logo-loading text-gradient-custom drop-shadow-lg mb-8 animate-pulse"></div>
+        <div className="spinner w-8 h-8 text-indigo-600 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+        <p className="text-sm opacity-50 mt-4 text-gray-900 dark:text-white font-bold uppercase tracking-widest">Загрузка...</p>
       </div>
     );
   }
@@ -988,7 +1014,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           onExit={() => setShowConfirm(true)}
           playSfx={playSfx}
           showExitButton={status === 'playing'}
-          isAdmin={tgUser?.id === ADMIN_ID}
+          isAdmin={tgUser?.id ? ADMIN_IDS.includes(tgUser.id) : false}
           onOpenAdmin={() => { setIsMenuOpen(false); setStatus('admin'); }}
         />
       )}

@@ -175,7 +175,7 @@ export const AchievementsModal = ({
           </div>
 
           {/* Раздел 4: Редкие слова */}
-          <div className="space-y-2">
+          <div className="space-y-2 mb-1">
              <h3 className="profile-label">Редкие слова</h3>
              <div className="grid grid-cols-3 gap-2">
                 <div className="stat-box p-2">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getUserRank } from '../utils/gameUtils';
-import { Trophy, Flame, BookOpenText, Settings, Zap, User, Info, CheckCircle } from 'lucide-react';
+import { Trophy, Flame, BookOpenText, Settings, Zap, Info, CheckCircle } from 'lucide-react';
 
 interface MainMenuProps {
   streak: number;
@@ -89,9 +89,6 @@ export const MainMenu = ({
         </div>
 
         <div className="flex gap-1 shrink-0">
-          <button onClick={() => { playSfx('click'); openAchievements(); }} className={`stat-card text-orange-500`}>
-            <User size={24} />
-          </button>
           <button onClick={() => { playSfx('click'); setShowCollection(true); }} className={`stat-card text-blue-600`}>
             <BookOpenText size={24} />
           </button>
@@ -113,10 +110,10 @@ export const MainMenu = ({
       <div className="w-full shrink-0 flex flex-col gap-4 pb-2 mt-auto">
         {/* Блок игрока */}
         <div className="text-center">
-          <div className="player-card">
+          <button onClick={() => { playSfx('click'); openAchievements(); }} className="player-card active:scale-95 transition-transform">
             <p className="text-xs font-bold uppercase tracking-widest text-gradient-custom">{userName}</p>
             <p className="text-[10px] font-bold tracking-widest opacity-60 stat-label">{getUserRank(totalScore)}</p>
-          </div>
+          </button>
         </div>
 
         {/* Карточки статистики */}
@@ -137,9 +134,8 @@ export const MainMenu = ({
           onClick={() => { playSfx('click'); openDailyChallenge(); }}
           className={`w-full py-3 font-bold rounded-2xl border transition-all uppercase text-sm flex flex-col items-center justify-center relative overflow-hidden group
             ${isDailyPlayedToday
-              //******ИСПРАВИТЬ СТИЛЬ */
-              ? 'bg-green-600/10 text-green-600 dark:text-green-400 border-green-500/20'
-              : 'bg-gradient-to-r from-amber-400/80 to-orange-500/80 backdrop-blur-md text-white border-white/20 shadow-lg hover:shadow-amber-500/30 active:scale-[0.98]'}`}
+              ? 'game-day-end'
+              : 'game-day'}`}
         >
           {isDailyPlayedToday ? (
              <span className="text-lg relative z-10 flex items-center gap-2"><CheckCircle size={20} /> Рейтинг дня</span>

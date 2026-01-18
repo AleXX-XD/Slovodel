@@ -338,6 +338,19 @@ const deleteFeedback = async (id: number) => {
   return true;
 };
 
+// Функция для создания рассылки
+const sendBroadcast = async (message: string) => {
+  const { error } = await supabase
+    .from('broadcasts')
+    .insert({ message, status: 'pending' });
+
+  if (error) {
+    console.error('Ошибка создания рассылки:', error.message);
+    return false;
+  }
+  return true;
+};
+
 const getActiveChallenge = async () => {
   // Берем последнее созданное испытание (сортировка по убыванию ID)
   const { data: challenge } = await supabase
@@ -397,6 +410,7 @@ if (rootElement) {
         sendFeedbackReply={sendFeedbackReply}
         archiveFeedback={archiveFeedback}
         deleteFeedback={deleteFeedback}
+        sendBroadcast={sendBroadcast}
         tg={tg}
       />
     </React.StrictMode>
