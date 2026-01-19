@@ -17,9 +17,10 @@ interface LeaderboardModalProps {
   activeTab: 'all' | 'daily' | 'previous';
   onTabChange: (tab: 'all' | 'daily' | 'previous') => void;
   isLoading?: boolean;
+  onPlayerClick?: (player: any) => void;
 }
 
-export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, currentUserRankData, totalPlayers, getUserRank, activeTab, onTabChange, isLoading }: LeaderboardModalProps) => {
+export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, currentUserRankData, totalPlayers, getUserRank, activeTab, onTabChange, isLoading, onPlayerClick }: LeaderboardModalProps) => {
 
   const getPlaceIcon = (index: number) => {
     if (index === 0) return <span className="text-xl">🥇</span>;
@@ -90,14 +91,18 @@ export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, curren
                 const rank = currentRank;
                 const isCurrentUser = player.telegram_id === currentUserId;
                 return (
-                  <div key={i} className={`leaderboard-card ${isCurrentUser ? 'leaderboard-card-active' : ''}`}>
+                  <div 
+                    key={i} 
+                    onClick={() => onPlayerClick?.(player)}
+                    className={`leaderboard-card ${isCurrentUser ? 'leaderboard-card-active' : ''} cursor-pointer active:scale-[0.98]`}
+                  >
                     <div className="w-6 flex justify-center items-center">
                       {getPlaceIcon(rank - 1)}
                     </div>
-                    <img src={player.avatar_url || './image/book_face_1.png'} alt="avatar" className="w-8 h-8 rounded-full bg-indigo-100" />
+                    <img src={player.avatar_url || './image/book_face.png'} alt="avatar" className="w-8 h-8 rounded-full bg-indigo-100" />
                     <div className="flex-1 min-w-0 text-left">
                       <p className={`leaderboard-name ${isCurrentUser ? 'leaderboard-name-active' : ''}`}>{player.name}</p>
-                      <p className="leaderboard-subtext">{activeTab === 'all' ? getUserRank(player.score) : 'Очки за день'}</p>
+                      <p className="leaderboard-subtext">{activeTab === 'all' ? getUserRank(player.score) : 'Очки за испытание'}</p>
                     </div>
                     <span className="leaderboard-points">{player.score}</span>
                   </div>
@@ -110,11 +115,14 @@ export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, curren
                 {currentUserRankData.rank > data.length + 1 && (
                   <div className="text-center font-bold opacity-50 my-4">...</div>
                 )}
-                <div className="leaderboard-card leaderboard-card-active">
+                <div 
+                  className="leaderboard-card leaderboard-card-active cursor-pointer active:scale-[0.98]"
+                  onClick={() => onPlayerClick?.({ ...currentUserRankData, telegram_id: currentUserId })}
+                >
                   <div className="w-6 flex justify-center items-center">
                     {getPlaceIcon(currentUserRankData.rank - 1)}
                   </div>
-                  <img src={currentUserRankData.avatar_url || './image/book_face_1.png'} alt="avatar" className="w-10 h-10 rounded-full bg-indigo-100" />
+                  <img src={currentUserRankData.avatar_url || './image/book_face.png'} alt="avatar" className="w-10 h-10 rounded-full bg-indigo-100" />
                   <div className="flex-1 min-w-0 text-left">
                     <p className="leaderboard-name leaderboard-name-active">{currentUserRankData.username}</p>
                     <p className="leaderboard-subtext">{getUserRank(currentUserRankData.score)}</p>

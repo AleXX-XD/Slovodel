@@ -67,6 +67,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   const [showCollection, setShowCollection] = useState(false);
   const [isShopOpen, setIsShopOpen] = useState(false);
   const [shopPreviousScreen, setShopPreviousScreen] = useState<'about' | 'achievements' | null>(null);
+  const [shopInitialTab, setShopInitialTab] = useState<'bonuses' | 'coins'>('bonuses');
   const [isDailyChallengeOpen, setIsDailyChallengeOpen] = useState(false);
   const [currentChallengeId, setCurrentChallengeId] = useState<string>(() => {
     const saved = localStorage.getItem('slovodel_daily_play_v2');
@@ -110,13 +111,26 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     return saved ? parseInt(saved, 10) : 0;
   });
 
+  // Внутриигровая валюта
+  const [coins, setCoins] = useState(() => {
+    const saved = localStorage.getItem('slovodel_coins');
+    return saved ? parseInt(saved, 10) : 0; // Начальный баланс 0 (или 100 для теста)
+  });
+
   const [streak, setStreak] = useState(() => calculateStreakStatus().count);
   const [hasPlayedToday, setHasPlayedToday] = useState(() => localStorage.getItem('slovodel_streak_date') === getDailyDateString());
   const [streakMilestone, setStreakMilestone] = useState<string | null>(null);
 
   const [rareWords, setRareWords] = useState<RareWord[]>(() => {
     const saved = localStorage.getItem('slovodel_rare_words');
-    return saved ? JSON.parse(saved) : [];
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Ошибка чтения редких слов:", e);
+      }
+    }
+    return [];
   });
 
   // Новые состояния для статистики
@@ -136,10 +150,14 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   }>(() => {
     const saved = localStorage.getItem('slovodel_daily_play_v2');
     if (saved) {
-      const parsed = JSON.parse(saved);
-      const isSameUser = parsed.userId === tgUser?.id;
-      // Проверяем, не устарел ли локальный сейв (сравниваем с дефолтным '1', позже обновим из БД)
-      if (isSameUser && parsed.challengeId && parsed.scores) return parsed;
+      try {
+        const parsed = JSON.parse(saved);
+        const isSameUser = parsed.userId === tgUser?.id;
+        // Проверяем, не устарел ли локальный сейв (сравниваем с дефолтным '1', позже обновим из БД)
+        if (isSameUser && parsed.challengeId && parsed.scores) return parsed;
+      } catch (e) {
+        console.error("Ошибка чтения сохранения:", e);
+      }
     }
     return { challengeId: '1', scores: {}, userId: tgUser?.id };
   });
@@ -147,6 +165,8 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   const [lastRoundRecordBeaten, setLastRoundRecordBeaten] = useState<number | null>(null);
   const [newRankReached, setNewRankReached] = useState<string | null>(null);
   const [activeReward, setActiveReward] = useState<{ achievement: string; reward: { type: string; amount: number; } } | null>(null);
+  const [pendingRewards, setPendingRewards] = useState<{ achievement: string; reward: { type: string; amount: number; } }[]>([]);
+  const [otherUserProfile, setOtherUserProfile] = useState<any | null>(null);
 
   // Функция для тестирования UI из админки
   const handleTestModal = (type: string) => {
@@ -195,11 +215,11 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   const [message, setMessage] = useState<{ text: string, type: 'good' | 'bad' } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   
-  // Бонусы: инициализация из localStorage (по умолчанию 3, если пусто)
-  const [bonusTimeLeft, setBonusTimeLeft] = useState(() => Number(localStorage.getItem('slovodel_bonus_time') ?? 3));
-  const [bonusSwapLeft, setBonusSwapLeft] = useState(() => Number(localStorage.getItem('slovodel_bonus_swap') ?? 3));
-  const [bonusHintLeft, setBonusHintLeft] = useState(() => Number(localStorage.getItem('slovodel_bonus_hint') ?? 3));
-  const [bonusWildcardLeft, setBonusWildcardLeft] = useState(() => Number(localStorage.getItem('slovodel_bonus_wildcard') ?? 3));
+  // Бонусы: инициализация из localStorage (по умолчанию 2, если пусто)
+  const [bonusTimeLeft, setBonusTimeLeft] = useState(() => Number(localStorage.getItem('slovodel_bonus_time') ?? 2));
+  const [bonusSwapLeft, setBonusSwapLeft] = useState(() => Number(localStorage.getItem('slovodel_bonus_swap') ?? 2));
+  const [bonusHintLeft, setBonusHintLeft] = useState(() => Number(localStorage.getItem('slovodel_bonus_hint') ?? 2));
+  const [bonusWildcardLeft, setBonusWildcardLeft] = useState(() => Number(localStorage.getItem('slovodel_bonus_wildcard') ?? 2));
 
   // Реф для хранения бонусов пользователя во время ежедневного испытания
   const userBonusesRef = useRef({ time: 0, hint: 0, swap: 0, wildcard: 0 });
@@ -309,6 +329,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     localStorage.setItem('slovodel_high_score', highScore.toString());
     localStorage.setItem('slovodel_rare_words', JSON.stringify(rareWords));
     localStorage.setItem('slovodel_total_words', totalWords.toString());
+    localStorage.setItem('slovodel_coins', coins.toString());
   }, [totalScore, highScore, rareWords, totalWords]);
 
   // Синхронизация бонусов с localStorage
@@ -324,12 +345,13 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         if (data) { // Существующий пользователь
           // Полностью перезаписываем локальные данные данными из БД
           setTotalScore(data.score ?? 0);
+          setCoins(data.coins ?? 0);
           
           // Бонусы (с фолбэком на случай, если в БД их еще нет)
-          setBonusTimeLeft(data.bonus_time ?? 3);
-          setBonusHintLeft(data.bonus_hint ?? 3);
-          setBonusSwapLeft(data.bonus_swap ?? 3);
-          setBonusWildcardLeft(data.bonus_wildcard ?? 3);
+          setBonusTimeLeft(data.bonus_time ?? 2);
+          setBonusHintLeft(data.bonus_hint ?? 2);
+          setBonusSwapLeft(data.bonus_swap ?? 2);
+          setBonusWildcardLeft(data.bonus_wildcard ?? 2);
 
           // Редкие слова
           setRareWords(Array.isArray(data.rare_words) ? data.rare_words : []);
@@ -376,10 +398,11 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           setTotalScore(0);
           setHighScore(0);
           setRareWords([]);
-          setBonusTimeLeft(3);
-          setBonusHintLeft(3);
-          setBonusSwapLeft(3);
-          setBonusWildcardLeft(3);
+          setCoins(0); // Новым игрокам можно дать приветственный бонус, например 50
+          setBonusTimeLeft(2);
+          setBonusHintLeft(2);
+          setBonusSwapLeft(2);
+          setBonusWildcardLeft(2);
           setTotalWords(0);
           setDaysPlayed(0);
           setDailyPlaces({ first: 0, second: 0, third: 0 });
@@ -479,7 +502,8 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       totalWords: totalWords,
       highScore: currentHighScore,
       daysPlayed: currentDaysPlayed,
-      streak: currentStreak
+      streak: currentStreak,
+      coins: coins
     })).catch((err: any) => {
       console.error("Ошибка сохранения рекорда:", err);
     });
@@ -509,8 +533,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         else if (currentStreak >= 7) mult = 2;
 
         const reward = generateRandomReward(mult);
-        setActiveReward({ achievement: `Серия: ${currentStreak} дней!`, reward });
-        playSfx('reward_fanfare');
+        setPendingRewards(prev => [...prev, { achievement: `Серия: ${currentStreak} дней!`, reward }]);
       } else {
         showToast('Твой внутренний филолог в огне! 🔥 Продолжай в том же духе!', 'good');
       }
@@ -579,10 +602,23 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         case 'hint': setBonusHintLeft(prev => prev + amount); break;
         case 'swap': setBonusSwapLeft(prev => prev + amount); break;
         case 'wildcard': setBonusWildcardLeft(prev => prev + amount); break;
+        case 'coins': setCoins(prev => prev + amount); break; // Если награда в монетах
     }
     playSfx('bonus');
     setActiveReward(null);
   };
+
+  // Эффект для показа отложенных наград в меню
+  useEffect(() => {
+    if (status === 'menu' && pendingRewards.length > 0) {
+      if (!activeReward && !streakMilestone && !isMenuOpen && !isAboutOpen && !isAchievementsOpen && !showCollection && !isShopOpen && !isDailyChallengeOpen && !showGlobalRanking) {
+        const next = pendingRewards[0];
+        setActiveReward(next);
+        setPendingRewards(prev => prev.slice(1));
+        playSfx('reward_fanfare');
+      }
+    }
+  }, [status, pendingRewards, activeReward, streakMilestone, isMenuOpen, isAboutOpen, isAchievementsOpen, showCollection, isShopOpen, isDailyChallengeOpen, showGlobalRanking, playSfx]);
 
   useEffect(() => {
     let interval: number;
@@ -620,7 +656,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         wildcard: bonusWildcardLeft
       };
       
-      // Если есть сохраненные бонусы для дейлика на сегодня — используем их, иначе даем по 2
+      // Если есть сохраненные бонусы для дейлика на сегодня — используем их, иначе даем по 1
       const dailyBonuses = (dailyStatus.challengeId === currentChallengeId && dailyStatus.bonuses) 
         ? dailyStatus.bonuses 
         : { time: 1, hint: 1, swap: 1, wildcard: 1 };
@@ -719,7 +755,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           
           if (newRareWords.length % 5 === 0) {
              const reward = generateRandomReward();
-             setActiveReward({ achievement: `Коллекционер: ${newRareWords.length} слов!`, reward });
+             setPendingRewards(prev => [...prev, { achievement: `Коллекционер: ${newRareWords.length} слов!`, reward }]);
              playSfx('reward_fanfare');
           }
         } else {
@@ -817,6 +853,32 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       }
     } finally {
       setIsLeaderboardLoading(false);
+    }
+  };
+
+  const handleLeaderboardPlayerClick = async (player: any) => {
+    playSfx('click');
+    // Если кликнули на себя — открываем свое окно достижений
+    if (player.telegram_id === tgUser?.id) {
+      setIsAchievementsOpen(true);
+      return;
+    }
+
+    // Загружаем данные другого игрока
+    if (getUserData) {
+      try {
+        const data = await getUserData(player.telegram_id);
+        let rank = 0;
+        if (fetchUserRank) {
+             const r = await fetchUserRank(player.telegram_id);
+             if (r && typeof r.rank === 'number') rank = r.rank;
+        }
+        if (data) {
+           setOtherUserProfile({ ...data, rank });
+        }
+      } catch (e) {
+        console.error("Не удалось загрузить профиль игрока", e);
+      }
     }
   };
 
@@ -987,6 +1049,53 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     setSwapTargetIdx(null);
   };
 
+  // Функция покупки пакета бонусов
+  const handleBuyBonuses = (items: { type: 'time' | 'hint' | 'swap' | 'wildcard', cost: number, amount: number }[]): boolean => {
+    const totalCost = items.reduce((sum, item) => sum + item.cost, 0);
+
+    if (coins >= totalCost) {
+      const newCoins = coins - totalCost;
+      setCoins(newCoins);
+
+      let newTime = bonusTimeLeft;
+      let newHint = bonusHintLeft;
+      let newSwap = bonusSwapLeft;
+      let newWildcard = bonusWildcardLeft;
+
+      items.forEach(item => {
+        switch (item.type) {
+          case 'time': newTime += item.amount; break;
+          case 'hint': newHint += item.amount; break;
+          case 'swap': newSwap += item.amount; break;
+          case 'wildcard': newWildcard += item.amount; break;
+        }
+      });
+
+      setBonusTimeLeft(newTime);
+      setBonusHintLeft(newHint);
+      setBonusSwapLeft(newSwap);
+      setBonusWildcardLeft(newWildcard);
+
+      playSfx('bonus');
+      showToast(`Куплено бонусов: ${items.reduce((a, i) => a + i.amount, 0)}`, 'good');
+      
+      // Сохраняем сразу, чтобы не потерять прогресс при закрытии
+      saveUserData({
+        telegramId: tgUser?.id,
+        username: USER_NAME,
+        score: totalScore,
+        bonuses: { time: newTime, hint: newHint, swap: newSwap, wildcard: newWildcard },
+        rareWords, totalWords, highScore, daysPlayed, streak,
+        coins: newCoins
+      });
+      return true;
+    } else {
+      playSfx('error');
+      showToast('Недостаточно монет!', 'bad');
+      return false;
+    }
+  };
+
   const isCurrentChallenge = dailyStatus.challengeId === currentChallengeId;
   const dailyLevelsDone = isCurrentChallenge && dailyStatus.scores ? Object.keys(dailyStatus.scores).map(Number) : [];
   const isDailyFullComplete = isCurrentChallenge && [10, 8, 6].every(l => dailyStatus.scores && Object.prototype.hasOwnProperty.call(dailyStatus.scores, l));
@@ -1038,30 +1147,6 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           isDailyMode={isDailyMode}
         />
       )}
-      {isAchievementsOpen && (
-        <AchievementsModal 
-          onClose={() => setIsAchievementsOpen(false)} 
-          playSfx={playSfx}
-          username={USER_NAME}
-          avatarUrl={tgUser?.photo_url}
-          rank={getUserRank(totalScore)}
-          totalScore={totalScore}
-          highScore={highScore}
-          streak={streak}
-          totalWords={totalWords}
-          rareWords={rareWords}
-          bonuses={{
-            time: bonusTimeLeft,
-            hint: bonusHintLeft,
-            swap: bonusSwapLeft,
-            wildcard: bonusWildcardLeft
-          }}
-          onOpenShop={() => { setIsAchievementsOpen(false); setShopPreviousScreen('achievements'); setIsShopOpen(true); }}
-          place={userRank}
-          daysPlayed={daysPlayed}
-          dailyPlaces={dailyPlaces}
-        />
-      )}
       {activeReward && (
         <RewardModal
           achievement={activeReward.achievement}
@@ -1071,8 +1156,13 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         />
       )}
       {showCollection && <CollectionModal words={rareWords} onClose={() => setShowCollection(false)} playSfx={playSfx} />}
-      {isShopOpen && <ShopModal onClose={() => { 
+      {isShopOpen && <ShopModal 
+        coins={coins}
+        onBuyBonuses={handleBuyBonuses}
+        initialTab={shopInitialTab}
+        onClose={() => { 
         setIsShopOpen(false); 
+        setShopInitialTab('bonuses');
         if (shopPreviousScreen === 'about') setIsAboutOpen(true);
         else if (shopPreviousScreen === 'achievements') setIsAchievementsOpen(true);
       }} playSfx={playSfx} />}
@@ -1113,7 +1203,63 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         activeTab={leaderboardTab}
         onTabChange={handleLeaderboardTabChange}
         isLoading={isLeaderboardLoading}
+        onPlayerClick={handleLeaderboardPlayerClick}
       />}
+      {isAchievementsOpen && (
+        <AchievementsModal 
+          onClose={() => setIsAchievementsOpen(false)} 
+          playSfx={playSfx}
+          username={USER_NAME}
+          avatarUrl={tgUser?.photo_url}
+          rank={getUserRank(totalScore)}
+          totalScore={totalScore}
+          highScore={highScore}
+          streak={streak}
+          totalWords={totalWords}
+          rareWords={rareWords}
+          bonuses={{
+            time: bonusTimeLeft,
+            hint: bonusHintLeft,
+            swap: bonusSwapLeft,
+            wildcard: bonusWildcardLeft
+          }}
+          onOpenShop={(tab) => { 
+            setIsAchievementsOpen(false); 
+            setShopPreviousScreen('achievements'); 
+            if (tab) setShopInitialTab(tab);
+            setIsShopOpen(true); 
+          }}
+          place={userRank}
+          daysPlayed={daysPlayed}
+          dailyPlaces={dailyPlaces}
+          coins={coins}
+        />
+      )}
+      {otherUserProfile && (
+        <AchievementsModal 
+          onClose={() => setOtherUserProfile(null)} 
+          playSfx={playSfx}
+          username={otherUserProfile.username || 'Игрок'}
+          avatarUrl={otherUserProfile.avatar_url}
+          rank={getUserRank(Number(otherUserProfile.score) || 0)}
+          totalScore={Number(otherUserProfile.score) || 0}
+          highScore={otherUserProfile.high_score || 0}
+          streak={otherUserProfile.streak || 0}
+          totalWords={otherUserProfile.total_words || 0}
+          rareWords={otherUserProfile.rare_words || []}
+          bonuses={{ time: 0, hint: 0, swap: 0, wildcard: 0 }} // Заглушка, не отображается
+          onOpenShop={() => {}}
+          place={otherUserProfile.rank || 0}
+          daysPlayed={otherUserProfile.days_played || 0}
+          dailyPlaces={{
+            first: otherUserProfile.daily_1_place || 0,
+            second: otherUserProfile.daily_2_place || 0,
+            third: otherUserProfile.daily_3_place || 0
+          }}
+          coins={0} // Заглушка
+          isPublicView={true}
+        />
+      )}
 
       {status === 'menu' && (
         <MainMenu
@@ -1136,6 +1282,11 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           dailyScore={currentDailyScore}
           challengeId={currentChallengeId}
           challengeEndTime={challengeEndTime}
+          coins={coins}
+          onOpenShop={(tab) => {
+            if (tab) setShopInitialTab(tab);
+            setIsShopOpen(true);
+          }}
         />
       )}
 
@@ -1160,8 +1311,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
             if (newRankReached) {
               const mult = getRankMultiplier(newRankReached);
               const reward = generateRandomReward(mult);
-              setActiveReward({ achievement: `За достижение звания!`, reward });
-              playSfx('reward_fanfare');
+              setPendingRewards(prev => [...prev, { achievement: `За достижение звания!`, reward }]);
             }
           }}
         />
@@ -1199,13 +1349,19 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           performSwap={performSwap}
           swapTargetIdx={swapTargetIdx}
           setSwapTargetIdx={setSwapTargetIdx}
-          message={message}
           showConfirm={showConfirm}
           setShowConfirm={setShowConfirm}
           finishGame={finishGame}
           setGrid={setGrid}
           onOpenShop={() => { setShopPreviousScreen(null); setIsShopOpen(true); }}
         />
+      )}
+
+      {/* Глобальные уведомления (Тосты) */}
+      {message && (
+        <div className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3 rounded-2xl font-bold text-white shadow-2xl z-[1000] animate-bounce text-center backdrop-blur-md border border-white/20 ${message?.type === 'good' ? 'bg-indigo-600/90' : 'bg-red-500/90'}`}>
+          {message?.text}
+        </div>
       )}
     </div>
   );

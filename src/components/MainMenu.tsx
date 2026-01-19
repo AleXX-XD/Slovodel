@@ -22,12 +22,17 @@ interface MainMenuProps {
   dailyScore: number;
   challengeId: string;
   challengeEndTime?: string | null;
+  coins: number;
+  onOpenShop: (tab?: 'bonuses' | 'coins') => void;
 }
 
+
+
 export const MainMenu = ({
-  streak, streakMilestone, setStreakMilestone, hasPlayedToday,
+ streak, streakMilestone, setStreakMilestone, hasPlayedToday,
   openGlobalRanking, openAchievements, playSfx, setShowCollection, onOpenAbout, setIsMenuOpen,
-  userName, totalScore, highScore, isDailyPlayedToday, startGame, openDailyChallenge, dailyScore, challengeEndTime
+  userName, totalScore, highScore, isDailyPlayedToday, startGame, openDailyChallenge, dailyScore, challengeEndTime,
+  coins, onOpenShop
 }: MainMenuProps) => {
   const [timeLeft, setTimeLeft] = useState('');
 
@@ -67,7 +72,7 @@ export const MainMenu = ({
           <div className="modal-content">
             <div className="text-6xl mb-4 animate-bounce">🔥</div>
             <h2 className="modal-title text-amber-500">Новое достижение!</h2>
-            <p className="text-lg font-bold my-4 italic text-gray-800 dark:text-white">"{streakMilestone}"</p>
+            <p className="text-lg font-bold my-4 italic text-gray-800 dark:text-white break-words px-4">"{streakMilestone}"</p>
             <p className="text-sm opacity-70 mb-6 text-gray-600 dark:text-gray-200">Твоя серия: {streak} дн.</p>
             <button onClick={() => { playSfx('click'); setStreakMilestone(null); }} className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-transform uppercase">Продолжить</button>
           </div>
@@ -109,10 +114,15 @@ export const MainMenu = ({
       {/* Нижняя панель */}
       <div className="w-full shrink-0 flex flex-col gap-4 pb-2 mt-auto">
         {/* Блок игрока */}
-        <div className="text-center">
+        <div className="flex justify-center items-center gap-3">
           <button onClick={() => { playSfx('click'); openAchievements(); }} className="player-card active:scale-95 transition-transform">
             <p className="text-xs font-bold uppercase tracking-widest text-gradient-custom">{userName}</p>
             <p className="text-[10px] font-bold tracking-widest opacity-60 stat-label">{getUserRank(totalScore)}</p>
+          </button>
+          
+          <button onClick={() => { playSfx('click'); onOpenShop('coins'); }} className="coin-card" title="Магазин">
+            <img src="./image/coin.svg" alt="coins" className="w-5 h-5" />
+            <span className="coin-value">{coins}</span>
           </button>
         </div>
 

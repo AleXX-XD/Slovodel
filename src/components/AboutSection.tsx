@@ -96,14 +96,14 @@ export const AboutSection = ({ onClose, playSfx, bonuses, onOpenShop, onSubmitFe
               <div className="grid grid-cols-1">
                 {[
                   { rank: "Новичок-грамотей", points: "до 2 000", img: "./image/face.png" },
-                  { rank: "Книжный червь", points: "от 2 000", img: "./image/worm_1.png" },
-                  { rank: "Буквенный следопыт", points: "от 5 000", img: "./image/worm_1.png" },
-                  { rank: "Словесный скаут", points: "от 10 000", img: "./image/wizard.png" },
-                  { rank: "Адепт алфавита", points: "от 20 000", img: "./image/wizard.png" },
-                  { rank: "Мастер слов", points: "от 50 000", img: "./image/wizard.png" },
-                  { rank: "Магистр букв", points: "от 100 000", img: "./image/book_master_1.png" },
-                  { rank: "Живая энциклопедия", points: "от 200 000", img: "./image/book_master_1.png" },
-                  { rank: "Оракул Словодела", points: "от 500 000", img: "./image/book_master_1.png" }
+                  { rank: "Книжный червь", points: "от 2 000", img: "./image/worm.png" },
+                  { rank: "Буквенный следопыт", points: "от 5 000", img: "./image/ranger.png" },
+                  { rank: "Словесный скаут", points: "от 10 000", img: "./image/scaut.png" },
+                  { rank: "Адепт алфавита", points: "от 20 000", img: "./image/adept.png" },
+                  { rank: "Мастер слов", points: "от 50 000", img: "./image/master.png" },
+                  { rank: "Магистр букв", points: "от 100 000", img: "./image/wizard.png" },
+                  { rank: "Живая энциклопедия", points: "от 200 000", img: "./image/book_master.png" },
+                  { rank: "Оракул Словодела", points: "от 500 000", img: "./image/oracul.png" }
                 ].map((item, i) => (
                   <div key={i} className="rank-item">
                     <img src={item.img} alt={item.rank} className="w-8 h-8 object-contain" />

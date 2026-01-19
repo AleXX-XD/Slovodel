@@ -33,7 +33,6 @@ interface GameScreenProps {
   performSwap: (char: string) => void;
   swapTargetIdx: number | null;
   setSwapTargetIdx: (val: number | null) => void;
-  message: { text: string, type: 'good' | 'bad' } | null;
   showConfirm: boolean;
   setShowConfirm: (val: boolean) => void;
   finishGame: () => void;
@@ -47,11 +46,11 @@ export const GameScreen = (props: GameScreenProps) => {
     foundWords, currentInput, setCurrentInput, playSfx, handleAddTime, bonusTimeLeft,
     handleHint, bonusHintLeft, handleWildcard, bonusWildcardLeft, wildcardActiveSeconds,
     hintActiveSeconds, toggleSwapMode, bonusSwapLeft, isSwapActive, grid, hintIndices, startSwap, checkWord,
-    performSwap, swapTargetIdx, setSwapTargetIdx, message, showConfirm, setShowConfirm, finishGame, setGrid, onOpenShop
+    performSwap, swapTargetIdx, setSwapTargetIdx, showConfirm, setShowConfirm, finishGame, setGrid, onOpenShop
   } = props;
 
   return (
-    <div className="h-[100dvh] w-full max-w-md mx-auto flex flex-col overflow-hidden relative">
+    <div className="game-container">
       {/* Модалка замены */}
       {swapTargetIdx !== null && (
         <div className="modal-overlay z-[60]">
@@ -70,7 +69,7 @@ export const GameScreen = (props: GameScreenProps) => {
       )}
 
       {/* Хедер */}
-      <header className="p-4 flex justify-between items-center z-20 shrink-0">
+      <header className="game-header">
         <div className="flex flex-col">
           <div className="game-score">{score}</div>
           {isDailyMode && <div className="text-[10px] font-bold uppercase text-amber-500 tracking-wider">День 🏆</div>}
@@ -83,7 +82,7 @@ export const GameScreen = (props: GameScreenProps) => {
       </header>
 
       {/* Область найденных слов */}
-      <div className="flex-1 p-4 overflow-y-auto space-y-4 min-h-0">
+      <div className="game-board-area">
         {hintWord && (
           <div className="hint-box">
             <div className="hint-label">Подсказка</div>
@@ -119,13 +118,13 @@ export const GameScreen = (props: GameScreenProps) => {
               <button 
                 key={i} 
                 onClick={isZero ? (isDailyMode ? undefined : () => { playSfx('click'); onOpenShop(); }) : btn.action} 
-                className={`relative flex flex-col items-center group transition-all ${isZero && isDailyMode ? 'opacity-50 grayscale cursor-not-allowed' : 'active:scale-95'}`}
+                className={`bonus-btn-wrapper ${isZero && isDailyMode ? 'bonus-btn-disabled' : 'bonus-btn-active'}`}
                 disabled={isZero && isDailyMode}
               >
                 <div className={`bonus-btn-container ${btn.pulse ? `animate-pulse ring-4 ${btn.ringClass}` : ''}`}>
                   {btn.icon}
                 </div>
-                <span className={`mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm ${isZero && !isDailyMode ? 'bg-green-500 text-white' : 'bonus-badge-normal'}`}>
+                <span className={`bonus-badge ${isZero && !isDailyMode ? 'bonus-badge-zero' : 'bonus-badge-normal'}`}>
                   {isZero ? (isDailyMode ? '0' : '+') : btn.count}
                 </span>
               </button>
@@ -136,7 +135,7 @@ export const GameScreen = (props: GameScreenProps) => {
         {/* Поле ввода */}
         <div className="input-field-container">
           {currentInput.length > 0 && (
-            <button onClick={() => { playSfx('click'); setCurrentInput([]); }} className="absolute left-2 p-2 text-gray-400 hover:text-red-400 transition-colors" title="Стереть все"><Trash2 size={24} /></button>
+            <button onClick={() => { playSfx('click'); setCurrentInput([]); }} className="absolute left-2 p-2 input-field-element hover:text-red-400 transition-colors" title="Стереть все"><Trash2 size={24} /></button>
           )}
           <div 
             className={`input-text ${currentInput.length > 12 ? 'text-right' : 'text-center'}`}
@@ -145,7 +144,7 @@ export const GameScreen = (props: GameScreenProps) => {
             {currentInput.length > 0 ? <span style={{ direction: 'ltr', unicodeBidi: 'embed' }}>{currentInput.join('')}</span> : <span className="input-placeholder">Слово...</span>}
           </div>
           {currentInput.length > 0 && (
-            <button onClick={() => { playSfx('click'); setCurrentInput(prev => prev.slice(0, -1)); }} className="absolute right-2 p-2 text-gray-400 hover:text-indigo-500 transition-colors"><Delete size={24} /></button>
+            <button onClick={() => { playSfx('click'); setCurrentInput(prev => prev.slice(0, -1)); }} className="absolute right-2 p-2 input-field-element hover:text-indigo-500 transition-colors"><Delete size={24} /></button>
           )}
         </div>
 
@@ -157,18 +156,11 @@ export const GameScreen = (props: GameScreenProps) => {
         </div>
 
         {/* Кнопки управления */}
-        <div className="flex gap-3">
-          <button onClick={() => { playSfx('click'); setGrid([...grid].sort(() => Math.random() - 0.5)); }} className="flex-1 py-4 bg-gradient-to-b from-blue-400 to-blue-600 text-white font-bold rounded-2xl active:scale-95 transition-all uppercase text-lg tracking-widest shadow-lg">Микс</button>
-          <button onClick={checkWord} disabled={currentInput.length === 0} className={`flex-[2] py-4 font-bold rounded-2xl transition-all uppercase text-lg tracking-widest shadow-lg ${currentInput.length > 0 ? 'bg-gradient-to-b from-green-400 to-green-600 text-white active:scale-95' : 'btn-enter-disabled'}`}>Ввод</button>
+        <div className="game-controls">
+          <button onClick={() => { playSfx('click'); setGrid([...grid].sort(() => Math.random() - 0.5)); }} className="btn-control-mix">Микс</button>
+          <button onClick={checkWord} disabled={currentInput.length === 0} className={`btn-control-enter ${currentInput.length > 0 ? 'btn-control-enter-active' : 'btn-enter-disabled'}`}>Ввод</button>
         </div>
       </div>
-
-      {/* Тосты и модалки */}
-      {message && (
-        <div className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3 rounded-2xl font-bold text-white shadow-2xl z-[200] animate-bounce text-center backdrop-blur-md border border-white/20 ${message.type === 'good' ? 'bg-indigo-600/90' : 'bg-red-500/90'}`}>
-          {message.text}
-        </div>
-      )}
 
       {showConfirm && (
         <div className="modal-overlay z-[70]">

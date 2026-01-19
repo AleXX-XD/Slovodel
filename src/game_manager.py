@@ -118,12 +118,12 @@ def process_broadcasts():
     except Exception as e:
         print(f"Ошибка в process_broadcasts: {e}")
 
-# --- ОТПРАВКА РЕЗУЛЬТАТОВ (В 06:00 UTC) ---
+# --- ОТПРАВКА РЕЗУЛЬТАТОВ (В 03:00 UTC) ---
 def process_results_notification():
     try:
         now_utc = datetime.now(timezone.utc)
-        # Если время меньше 06:00 UTC, ничего не делаем
-        if now_utc.hour < 6:
+        # Если время меньше 03:00 UTC, ничего не делаем
+        if now_utc.hour < 3:
             return
 
         # Получаем ID текущего активного испытания
@@ -290,5 +290,6 @@ if __name__ == "__main__":
         # Иначе запускаем один раз (для GitHub Actions)
         print("Запуск разовой проверки...")
         process_broadcasts()
+        process_results_notification()
         # В разовом режиме принудительно не запускаем, если время не пришло (логика внутри функции)
         process_daily_update()

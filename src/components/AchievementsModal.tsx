@@ -14,23 +14,31 @@ interface AchievementsModalProps {
   totalWords: number;
   rareWords: RareWord[];
   bonuses: { time: number; hint: number; swap: number; wildcard: number };
-  onOpenShop: () => void;
+  onOpenShop: (tab?: 'bonuses' | 'coins') => void;
   place: number;
   daysPlayed: number;
   dailyPlaces: { first: number; second: number; third: number };
+  coins: number;
+  isPublicView?: boolean;
 }
 
 export const AchievementsModal = ({
   onClose, playSfx, username, avatarUrl, rank,
   totalScore, highScore, streak, totalWords, rareWords, bonuses, onOpenShop,
-  place, daysPlayed, dailyPlaces
+  place, daysPlayed, dailyPlaces, coins, isPublicView = false
 }: AchievementsModalProps) => {
 
   const getRankImage = (r: string) => {
     if (r.includes("Новичок")) return "./image/face.png";
-    if (r.includes("Книжный") || r.includes("Следопыт")) return "./image/worm_1.png";
-    if (r.includes("Скаут") || r.includes("Мастер")) return "./image/wizard.png";
-    return "./image/book_master_1.png";
+    if (r.includes("Книжный")) return "./image/worm.png";
+    if (r.includes("Следопыт")) return "./image/ranger.png";
+    if (r.includes("Скаут")) return "./image/scaut.png";
+    if (r.includes("Адепт")) return "./image/adept.png";
+    if (r.includes("Мастер")) return "./image/master.png";
+    if (r.includes("Магистр")) return "./image/wizard.png";
+    if (r.includes("Живая")) return "./image/book_master.png";
+    if (r.includes("Оракул")) return "./image/oracul.png";
+    return "./image/face.png";
   };
 
   const progress = getLevelProgress(totalScore);
@@ -42,7 +50,7 @@ export const AchievementsModal = ({
   const rare11Plus = rareWords.filter(w => w.length >= 11).length;
 
   return (
-    <div className="modal-overlay z-[400] text-left">
+    <div className="modal-overlay z-[900] text-left">
       <div className="modal-content max-w-sm text-left flex flex-col max-h-[85vh]">
 
         {/* Header */}
@@ -62,7 +70,7 @@ export const AchievementsModal = ({
           {/* Player Profile */}
           <div className="flex flex-col items-center text-center space-y-3">
             <div className="relative">
-              <img src={avatarUrl || './image/book_face_1.png'} alt="avatar" className="profile-avatar" />
+              <img src={avatarUrl || './image/book_face.png'} alt="avatar" className="profile-avatar" />
               <div className="profile-rank-badge">
                 <img src={getRankImage(rank)} alt="rank" className="w-6 h-6" />
               </div>
@@ -84,7 +92,21 @@ export const AchievementsModal = ({
             </div>
           </div>
 
+         {/* Balance */}
+         {!isPublicView && (
+           <div className="profile-block cursor-pointer active:scale-95 transition-transform" onClick={() => { playSfx('click'); onOpenShop('coins'); }}>
+            <div className="flex justify-between items-center">
+              <span className="profile-label mb-0">Ваш баланс:</span>
+              <div className="flex items-center gap-2">
+                <img src="./image/coin.svg" alt="coin" className="w-6 h-6 object-contain" />
+                <span className="shop-balance-value">{coins}</span>
+              </div>
+            </div>
+           </div>
+         )}
+
           {/* Bonuses Section */}
+          {!isPublicView && (
           <div className="space-y-3">
             <h3 className="profile-label">Ваши бонусы:</h3>
             <div className="grid grid-cols-4 gap-2">
@@ -107,6 +129,7 @@ export const AchievementsModal = ({
               <Plus size={18} /> Получить бонусы
             </button>
           </div>
+          )}
 
           {/* Раздел 1: Общая статистика */}
           <div className="space-y-2">

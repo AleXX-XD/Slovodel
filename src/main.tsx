@@ -27,6 +27,7 @@ const saveUserData = async (data: {
   highScore: number;
   daysPlayed: number;
   streak: number;
+  coins?: number;
 }) => {
   if (!data.telegramId) {
     console.warn("Нет Telegram ID, данные не будут сохранены в облако.");
@@ -49,6 +50,7 @@ const saveUserData = async (data: {
       high_score: data.highScore,
       days_played: data.daysPlayed,
       streak: data.streak,
+      coins: data.coins,
       updated_at: new Date() 
     }, { onConflict: 'telegram_id' });
 
@@ -153,7 +155,7 @@ const fetchLeaderboard = async () => {
       .from('leaderboard')
       .select('name:username, score, avatar_url, telegram_id', { count: 'exact' })
       .order('score', { ascending: false })
-      .limit(5);  //ТОП ИГРОКОВ
+      .limit(10);  //ТОП ИГРОКОВ
     
     if (error) throw error;
     return { players: data || [], count: count || 0 };
@@ -171,7 +173,7 @@ const fetchDailyLeaderboard = async (challengeId: string) => {
       .select('name:username, score, avatar_url, telegram_id', { count: 'exact' })
       .eq('challenge_id', challengeId)
       .order('score', { ascending: false })
-      .limit(5); //ТОП ИГРОКОВ
+      .limit(10); //ТОП ИГРОКОВ
     
     if (error) throw error;
     return { players: data || [], count: count || 0 };
@@ -191,7 +193,7 @@ const fetchPreviousDailyLeaderboard = async (currentChallengeId: string) => {
       .select('name:username, score, avatar_url, telegram_id', { count: 'exact' })
       .eq('challenge_id', prevId)
       .order('score', { ascending: false })
-      .limit(5); 
+      .limit(10); 
     
     if (error) throw error;
     return { players: data || [], count: count || 0 };
