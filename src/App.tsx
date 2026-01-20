@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { GameStatus, WordEntry } from './types';
 import { loadDictionary, getDictionary } from './utils/dictionary';
 import { SOUNDS } from './utils/constants';
-import { getDailyDateString, calculateStreakStatus, getStreakTitle, getUserRank, generateGrid, generateRandomReward, getRankMultiplier } from './utils/gameUtils';
+import { getDailyDateString, calculateStreakStatus, getStreakTitle, getUserRank, generateGrid, generateRandomReward } from './utils/gameUtils';
 import { CollectionModal, type RareWord } from './components/CollectionModal';
 import { LeaderboardModal } from './components/LeaderboardModal';
 import { SettingsMenu } from './components/SettingsMenu';
@@ -442,6 +442,8 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
                 return prev;
              });
           }
+        }).catch((err: any) => {
+           console.warn("Не удалось проверить статус дейлика (оффлайн?), используем локальный статус.", err);
         });
       }
     }

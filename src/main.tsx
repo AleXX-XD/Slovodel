@@ -120,11 +120,14 @@ const getUserDailyScore = async (telegramId: number, challengeId: string) => {
       .eq('challenge_id', challengeId)
       .single();
     
-    if (error && error.code !== 'PGRST116') throw error;
+    if (error) {
+      if (error.code === 'PGRST116') return null; // Записи нет - это нормально
+      throw error; // Ошибка сети или базы - пробрасываем
+    }
     return data;
   } catch (e) {
     console.error("Ошибка проверки ежедневной игры:", e);
-    return null;
+    throw e; // Пробрасываем ошибку дальше
   }
 };
 
@@ -379,19 +382,25 @@ const deleteNotification = async (id: number) => {
 };
 
 const getActiveChallenge = async () => {
-  // Берем последнее созданное испытание (сортировка по убыванию ID)
-  const { data: challenge } = await supabase
-    .from('challenges')
-    .select('id, letters, end_time')
-    .order('id', { ascending: false })
-    .limit(1)
-    .single();
+  try {
+    // Берем последнее созданное испытание (сортировка по убыванию ID)
+    const { data: challenge, error } = await supabase
+      .from('challenges')
+      .select('id, letters, end_time')
+      .order('id', { ascending: false })
+      .limit(1)
+      .single();
 
-  if (challenge) {
-    return { id: challenge.id.toString(), letters: challenge.letters, endTime: challenge.end_time };
+    if (error) throw error;
+
+    if (challenge) {
+      return { id: challenge.id.toString(), letters: challenge.letters, endTime: challenge.end_time };
+    }
+  } catch (e) {
+    console.error("Ошибка получения активного испытания:", e);
   }
 
-  return { id: '1', letters: null, endTime: null };
+  return null;
 };
 
 const fetchUserRank = async (telegramId: number) => {

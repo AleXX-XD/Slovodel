@@ -1,0 +1,34 @@
+name: Slovodel Cron Task
+
+on:
+  schedule:
+    - cron: '12 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: game-cron
+  cancel-in-progress: true
+
+jobs:
+  run-game-logic:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Game Manager
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        run: python src/game_manager.py

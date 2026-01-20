@@ -504,12 +504,13 @@
 
   /* Стили для окна награды (RewardModal) */
   .reward-modal-content {
-    @apply bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-8 text-center shadow-2xl border border-white/20 relative overflow-hidden;
+    @apply w-full max-w-md rounded-3xl p-8 text-center shadow-2xl relative overflow-hidden;
+    @apply bg-white border border-gray-100 text-gray-900;
     animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
   .dark .reward-modal-content {
-    @apply bg-slate-900;
+    @apply bg-slate-900 border-white/10 text-white;
   }
 
   .reward-gradient-bar {
@@ -1545,14 +1546,14 @@
   @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
     .modal-content, .game-panel, .stat-box, .profile-block, .shop-item-card-col, .leaderboard-card, 
     .about-block, .settings-row, .game_easy, .game_medium, .game_hard, .game-header-btn, .bonus-card,
-    .collection-item, .hint-item, .rank-item, .found-word-item {
+    .collection-item, .hint-item, .rank-item, .found-word-item, .reward-modal-content {
       @apply !bg-white/95 !border-gray-300;
     }
     
     .dark .modal-content, .dark .game-panel, .dark .stat-box, .dark .profile-block, 
     .dark .shop-item-card-col, .dark .leaderboard-card, .dark .about-block, .dark .settings-row,
     .dark .game_easy, .dark .game_medium, .dark .game_hard, .dark .game-header-btn, .dark .bonus-card,
-    .dark .collection-item, .dark .hint-item, .dark .rank-item, .dark .found-word-item {
+    .dark .collection-item, .dark .hint-item, .dark .rank-item, .dark .found-word-item, .dark .reward-modal-content {
       @apply !bg-slate-900/95 !border-slate-700;
     }
 
