@@ -165,10 +165,9 @@ export const generateRandomReward = (multiplier: number = 1): { type: 'time' | '
 };
 
 export const getRankMultiplier = (rank: string): number => {
-  if (rank === "Буквенный следопыт" || rank === "Словесный скаут") return 2;
-  if (rank === "Адепт алфавита" || rank === "Мастер слов") return 3;
-  if (rank === "Магистр букв") return 4;
-  if (rank === "Живая энциклопедия") return 5;
-  if (rank === "Оракул Словодела") return 10;
+  if (rank === "Адепт алфавита" || rank === "Мастер слов") return 2;
+  if (rank === "Магистр букв") return 3;
+  if (rank === "Живая энциклопедия") return 4;
+  if (rank === "Оракул Словодела") return 5;
   return 1;
 };

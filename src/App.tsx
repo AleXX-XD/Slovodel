@@ -45,7 +45,7 @@ interface Player {
   telegram_id?: number;
   avatar_url?: string;
 }
-export default function App({ saveUserData, saveDailyScore, getUserData, getActiveChallenge, getLeaderboard, getDailyLeaderboard, fetchPreviousDailyLeaderboard, getUserDailyScore, fetchUserRank, saveFeedback, fetchFeedbacks, addCustomWord, fetchCustomWords, fetchAdminCustomWords, deleteCustomWord, updateCustomWord, sendFeedbackReply, archiveFeedback, deleteFeedback, sendBroadcast, tg }: any) {
+export default function App({ saveUserData, saveDailyScore, getUserData, getActiveChallenge, getLeaderboard, getDailyLeaderboard, fetchPreviousDailyLeaderboard, getUserDailyScore, fetchUserRank, saveFeedback, fetchFeedbacks, addCustomWord, fetchCustomWords, fetchAdminCustomWords, deleteCustomWord, updateCustomWord, sendFeedbackReply, archiveFeedback, deleteFeedback, sendBroadcast, fetchNotifications, deleteNotification, tg }: any) {
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
   const USER_NAME = tgUser ? (tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '')) : 'Анонимный Лингвист';
   
@@ -447,6 +447,30 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     }
   }, [tgUser, getUserData, getUserDailyScore, currentChallengeId, fetchUserRank]);
 
+  // Загрузка уведомлений (награды за победу в турнирах)
+  useEffect(() => {
+    if (tgUser?.id && fetchNotifications) {
+      fetchNotifications(tgUser.id).then((notifs: any[]) => {
+        if (notifs && notifs.length > 0) {
+          const newRewards = notifs.map(n => {
+            if (n.type === 'daily_win') {
+              return {
+                achievement: `🏆 ${n.data.rank} место в Дневном турнире!`, // Дата уже есть в дате создания, но можно взять из data
+                reward: { type: 'daily_bundle', amount: n.data.bonus_amount },
+                notificationId: n.id
+              };
+            }
+            return null;
+          }).filter(Boolean);
+          
+          if (newRewards.length > 0) {
+             setPendingRewards(prev => [...prev, ...newRewards as any]);
+          }
+        }
+      });
+    }
+  }, [tgUser, fetchNotifications]);
+
   const finishGame = useCallback(() => {
     const finalScore = score;
     const oldHighScore = highScore;
@@ -526,14 +550,20 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       if ([3, 7, 14, 30].includes(currentStreak)) {
         setStreakMilestone(title);
         
-        // Множитель награды за серию
-        let mult = 1;
-        if (currentStreak >= 30) mult = 5;
-        else if (currentStreak >= 14) mult = 3;
-        else if (currentStreak >= 7) mult = 2;
+        let rewardItems: {type: string, amount: number}[] = [];
+        
+        if (currentStreak === 3) {
+           rewardItems = [{type: 'time', amount: 1}, {type: 'swap', amount: 1}];
+        } else if (currentStreak === 7) {
+           rewardItems = [{type: 'time', amount: 1}, {type: 'swap', amount: 1}, {type: 'hint', amount: 1}];
+        } else if (currentStreak === 14) {
+           rewardItems = [{type: 'swap', amount: 1}, {type: 'hint', amount: 1}, {type: 'wildcard', amount: 1}];
+        } else if (currentStreak >= 30) {
+           rewardItems = [{type: 'time', amount: 1}, {type: 'hint', amount: 1}, {type: 'swap', amount: 1}, {type: 'wildcard', amount: 1}];
+        }
 
-        const reward = generateRandomReward(mult);
-        setPendingRewards(prev => [...prev, { achievement: `Серия: ${currentStreak} дней!`, reward }]);
+        const reward = { type: 'bundle', items: rewardItems };
+        setPendingRewards(prev => [...prev, { achievement: `Серия: ${currentStreak} дней!`, reward: reward as any }]);
       } else {
         showToast('Твой внутренний филолог в огне! 🔥 Продолжай в том же духе!', 'good');
       }
@@ -602,8 +632,31 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         case 'hint': setBonusHintLeft(prev => prev + amount); break;
         case 'swap': setBonusSwapLeft(prev => prev + amount); break;
         case 'wildcard': setBonusWildcardLeft(prev => prev + amount); break;
-        case 'coins': setCoins(prev => prev + amount); break; // Если награда в монетах
+        case 'coins': setCoins(prev => prev + amount); break;
+        case 'daily_bundle': 
+          setBonusTimeLeft(prev => prev + amount);
+          setBonusHintLeft(prev => prev + amount);
+          setBonusSwapLeft(prev => prev + amount);
+          setBonusWildcardLeft(prev => prev + amount);
+          break;
+        case 'bundle':
+          if ((activeReward.reward as any).items) {
+            (activeReward.reward as any).items.forEach((item: any) => {
+               if (item.type === 'time') setBonusTimeLeft(p => p + item.amount);
+               if (item.type === 'hint') setBonusHintLeft(p => p + item.amount);
+               if (item.type === 'swap') setBonusSwapLeft(p => p + item.amount);
+               if (item.type === 'wildcard') setBonusWildcardLeft(p => p + item.amount);
+               if (item.type === 'coins') setCoins(p => p + item.amount);
+            });
+          }
+          break;
     }
+    
+    // Если это уведомление из базы, удаляем его
+    if ((activeReward as any).notificationId && deleteNotification) {
+      deleteNotification((activeReward as any).notificationId);
+    }
+
     playSfx('bonus');
     setActiveReward(null);
   };
@@ -1309,9 +1362,21 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           newRankReached={newRankReached}
           onRankModalClose={() => {
             if (newRankReached) {
-              const mult = getRankMultiplier(newRankReached);
-              const reward = generateRandomReward(mult);
-              setPendingRewards(prev => [...prev, { achievement: `За достижение звания!`, reward }]);
+              let rewardItems: {type: string, amount: number}[] = [];
+              
+              if (newRankReached.includes("Книжный")) rewardItems = [{type: 'time', amount: 1}];
+              else if (newRankReached.includes("Буквенный")) rewardItems = [{type: 'swap', amount: 1}, {type: 'time', amount: 1}];
+              else if (newRankReached.includes("Словесный")) rewardItems = [{type: 'swap', amount: 1}, {type: 'hint', amount: 1}];
+              else if (newRankReached.includes("Адепт")) rewardItems = [{type: 'time', amount: 1}, {type: 'swap', amount: 1}, {type: 'wildcard', amount: 1}];
+              else if (newRankReached.includes("Мастер")) rewardItems = [{type: 'time', amount: 1}, {type: 'hint', amount: 1}, {type: 'swap', amount: 1}, {type: 'wildcard', amount: 1}];
+              else if (newRankReached.includes("Магистр")) rewardItems = [{type: 'time', amount: 3}, {type: 'hint', amount: 3}, {type: 'swap', amount: 3}, {type: 'wildcard', amount: 3}];
+              else if (newRankReached.includes("Живая")) rewardItems = [{type: 'time', amount: 5}, {type: 'hint', amount: 5}, {type: 'swap', amount: 5}, {type: 'wildcard', amount: 5}];
+              else if (newRankReached.includes("Оракул")) rewardItems = [{type: 'time', amount: 10}, {type: 'hint', amount: 10}, {type: 'swap', amount: 10}, {type: 'wildcard', amount: 10}];
+              
+              if (rewardItems.length > 0) {
+                  const reward = { type: 'bundle', items: rewardItems };
+                  setPendingRewards(prev => [...prev, { achievement: `Новое звание: ${newRankReached}!`, reward: reward as any }]);
+              }
             }
           }}
         />

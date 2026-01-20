@@ -353,6 +353,31 @@ const sendBroadcast = async (message: string) => {
   return true;
 };
 
+// Функция для получения уведомлений
+const fetchNotifications = async (telegramId: number) => {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('telegram_id', telegramId);
+
+  if (error) {
+    // Игнорируем ошибку отсутствия таблицы (если миграция не прошла), чтобы не ломать игру
+    if (error.code !== '42P01') console.error('Ошибка загрузки уведомлений:', error.message);
+    return [];
+  }
+  return data || [];
+};
+
+// Функция для удаления уведомления
+const deleteNotification = async (id: number) => {
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .eq('id', id);
+
+  if (error) console.error('Ошибка удаления уведомления:', error.message);
+};
+
 const getActiveChallenge = async () => {
   // Берем последнее созданное испытание (сортировка по убыванию ID)
   const { data: challenge } = await supabase
@@ -413,6 +438,8 @@ if (rootElement) {
         archiveFeedback={archiveFeedback}
         deleteFeedback={deleteFeedback}
         sendBroadcast={sendBroadcast}
+        fetchNotifications={fetchNotifications}
+        deleteNotification={deleteNotification}
         tg={tg}
       />
     </React.StrictMode>

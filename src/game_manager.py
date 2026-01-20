@@ -150,7 +150,17 @@ def process_results_notification():
             print(f"Рассылка для испытания №{target_id} уже была выполнена.")
             return # Рассылка уже была
 
-        print(f"[{now_utc.strftime('%H:%M:%S')}] Начинаем рассылку результатов за испытание №{target_id}...")
+        # Получаем дату испытания (end_time - 1 день)
+        chal_data = supabase.table("challenges").select("end_time").eq("id", target_id).single().execute()
+        challenge_date_str = "???"
+        if chal_data.data:
+            et_str = chal_data.data.get('end_time')
+            if et_str:
+                et = datetime.fromisoformat(et_str.replace('Z', '+00:00'))
+                # Испытание заканчивается в 00:00 следующего дня, значит сама игра была в предыдущий день
+                challenge_date_str = (et - timedelta(days=1)).strftime("%d.%m.%Y")
+
+        print(f"[{now_utc.strftime('%H:%M:%S')}] Начинаем рассылку результатов за {challenge_date_str} (ID {target_id})...")
 
         # Получаем результаты
         scores_response = supabase.table("daily_scores").select("telegram_id, score").eq("challenge_id", target_id).order("score", desc=True).execute()
@@ -162,17 +172,23 @@ def process_results_notification():
                 if i > 0 and player['score'] < scores[i-1]['score']:
                     current_rank += 1
                 
-                # Отправляем только топ-3
+                # Формируем сообщение
+                msg = f"🏁 Итоги Дневного испытания ({challenge_date_str})\n\nВы заняли {current_rank}-е место с результатом {player['score']} очков!"
+                
+                # Добавляем про награду только победителям
                 if current_rank <= 3:
-                    msg = f"🏁 Итоги Испытания №{target_id}\n\nВы заняли {current_rank}-е место с результатом {player['score']} очков!\n🎉 Награда уже начислена!"
-                    try:
-                        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={
-                            "chat_id": player['telegram_id'],
-                            "text": msg
-                        }, timeout=5)
-                        time.sleep(0.1)
-                    except Exception as e:
-                        print(f"Ошибка отправки: {e}")
+                    msg += "\n\n🎉ПОЗДРАВЛЯЕМ!\n🎁Награда уже начислена!\n\n👏Ждем вас в новом испытании!"
+                else:
+                    msg += "\n\n💥Попробуйте свои силы сегодня!\n👏Ждем вас в новом испытании!"
+
+                try:
+                    requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={
+                        "chat_id": player['telegram_id'],
+                        "text": msg
+                    }, timeout=5)
+                    time.sleep(0.1)
+                except Exception as e:
+                    print(f"Ошибка отправки: {e}")
 
         # Ставим флаг, что рассылка выполнена
         supabase.table("broadcasts").insert({"message": flag_msg, "status": "sent"}).execute()
@@ -238,12 +254,6 @@ def process_daily_update():
                 
                 if bonus_amount > 0:
                     # Начисляем бонусы в таблицу leaderboard
-                    # Используем RPC вызов или прямой update (здесь упрощенно прямой update)
-                    # Логика начисления бонусов остается прежней, убираем только отправку сообщений
-                    pass # (Код начисления бонусов скрыт для краткости, он остается как был, но без msg)
-                    
-                    # ВАЖНО: В реальном коде оставьте блок update_data и supabase.table("leaderboard").update(...)
-                    # Я восстанавливаю его ниже полностью, чтобы не сломать логику
                     user_data = supabase.table("leaderboard").select("*").eq("telegram_id", player['telegram_id']).single().execute()
                     if user_data.data:
                         u = user_data.data
@@ -256,7 +266,26 @@ def process_daily_update():
                         if rank == 1: update_data["daily_1_place"] = (u.get('daily_1_place', 0) or 0) + 1
                         elif rank == 2: update_data["daily_2_place"] = (u.get('daily_2_place', 0) or 0) + 1
                         elif rank == 3: update_data["daily_3_place"] = (u.get('daily_3_place', 0) or 0) + 1
+                        
                         supabase.table("leaderboard").update(update_data).eq("telegram_id", player['telegram_id']).execute()
+
+                        # Создаем уведомление для фронтенда, чтобы показать окно награды
+                        try:
+                            # Дата игры (вчерашняя)
+                            game_date = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%d.%m.%Y")
+                            notif_payload = {
+                                "rank": rank,
+                                "score": player['score'],
+                                "bonus_amount": bonus_amount,
+                                "date": game_date
+                            }
+                            supabase.table("notifications").insert({
+                                "telegram_id": player['telegram_id'],
+                                "type": "daily_win",
+                                "data": notif_payload
+                            }).execute()
+                        except Exception as ne:
+                            print(f"Ошибка создания уведомления: {ne}")
         
         # 4. Генерируем и создаем НОВОЕ испытание
         new_letters = {
