@@ -23,11 +23,11 @@ export const CollectionModal = ({ words, onClose, playSfx }: CollectionModalProp
       <div className="modal-content max-w-sm text-left flex flex-col max-h-[85vh]">
         
         {/* Header */}
-        <div className="flex justify-between items-center mb-6 shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="modal-header-container">
+          <div className="modal-header-title-group">
             <BookOpenText size={28} className="modal-header-icon" />
             <div>
-              <h2 className="text-xl font-bold uppercase tracking-tight">Моя коллекция</h2>
+              <h2 className="modal-header-text">Моя коллекция</h2>
               <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">Собрано редкостей: {words.length}</p>
             </div>
           </div>
@@ -38,8 +38,8 @@ export const CollectionModal = ({ words, onClose, playSfx }: CollectionModalProp
 
         <div className="about-scroll-container">
           {sortedWords.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-10 opacity-60">
-              <BookOpenText size={64} strokeWidth={1} className="text-gray-400 dark:text-gray-600" />
+            <div className="collection-empty-state">
+              <BookOpenText size={64} strokeWidth={1} className="collection-empty-icon" />
               <p className="empty-state-text">Тут пока тишина...<br/>Твои редкие слова всё ещё прячутся в словаре!</p>
             </div>
           ) : (
@@ -57,8 +57,10 @@ export const CollectionModal = ({ words, onClose, playSfx }: CollectionModalProp
           )}
         </div>
 
-        <div className="mt-4 text-center opacity-30 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 shrink-0">
-          Словарь эрудита
+        <div className="mt-4 shrink-0">
+          <div className="creator-footer">
+            Словарь эрудита
+          </div>
         </div>
       </div>
     </div>

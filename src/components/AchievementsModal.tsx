@@ -31,8 +31,8 @@ export const AchievementsModal = ({
   const getRankImage = (r: string) => {
     if (r.includes("Новичок")) return "./image/face.png";
     if (r.includes("Книжный")) return "./image/worm.png";
-    if (r.includes("Следопыт")) return "./image/ranger.png";
-    if (r.includes("Скаут")) return "./image/scaut.png";
+    if (r.includes("Буквенный")) return "./image/ranger.png";
+    if (r.includes("Словесный")) return "./image/scaut.png";
     if (r.includes("Адепт")) return "./image/adept.png";
     if (r.includes("Мастер")) return "./image/master.png";
     if (r.includes("Магистр")) return "./image/wizard.png";
@@ -54,10 +54,10 @@ export const AchievementsModal = ({
       <div className="modal-content max-w-sm text-left flex flex-col max-h-[85vh]">
 
         {/* Header */}
-        <div className="flex justify-between items-center mb-6 shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="modal-header-container">
+          <div className="modal-header-title-group">
             <User size={28} className="modal-header-icon text-amber-500" />
-            <h2 className="text-xl font-bold uppercase tracking-tight">Профиль</h2>
+            <h2 className="modal-header-text">Профиль</h2>
           </div>
           <button onClick={() => { playSfx('click'); onClose(); }} className="modal-close-btn">
             <X size={24} className="modal-icon" />
@@ -88,7 +88,7 @@ export const AchievementsModal = ({
               {nextTarget && <span>{totalScore} / {nextTarget}</span>}
             </div>
             <div className="level-progress-bg">
-              <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-1000" style={{ width: `${progress}%` }}></div>
+              <div className="level-progress-fill" style={{ width: `${progress}%` }}></div>
             </div>
           </div>
 
@@ -124,7 +124,7 @@ export const AchievementsModal = ({
             </div>
             <button
               onClick={() => { playSfx('click'); onOpenShop(); }}
-              className="w-full py-3 bg-violet-600 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all uppercase text-sm flex items-center justify-center gap-2"
+              className="profile-btn-primary"
             >
               <Plus size={18} /> Получить бонусы
             </button>
@@ -157,17 +157,17 @@ export const AchievementsModal = ({
           <div className="space-y-2">
              <h3 className="profile-label">Дневные испытания</h3>
              <div className="grid grid-cols-3 gap-2">
-                <div className="stat-box p-2 bg-yellow-100/50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700/30">
+                <div className="stat-box p-2">
                    <span className="text-xl">🥇</span>
                    <span className="stat-value-text text-sm tracking-tight leading-none">{dailyPlaces.first}</span>
                    <span className="stat-label-text">1 место</span>
                 </div>
-                <div className="stat-box p-2 bg-gray-100/50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-600/30">
+                <div className="stat-box p-2">
                    <span className="text-xl">🥈</span>
                    <span className="stat-value-text text-sm tracking-tight leading-none">{dailyPlaces.second}</span>
                    <span className="stat-label-text">2 место</span>
                 </div>
-                <div className="stat-box p-2 bg-orange-100/50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-700/30">
+                <div className="stat-box p-2">
                    <span className="text-xl">🥉</span>
                    <span className="stat-value-text text-sm tracking-tight leading-none">{dailyPlaces.third}</span>
                    <span className="stat-label-text">3 место</span>

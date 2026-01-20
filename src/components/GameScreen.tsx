@@ -74,7 +74,7 @@ export const GameScreen = (props: GameScreenProps) => {
           <div className="game-score">{score}</div>
           {isDailyMode && <div className="text-[10px] font-bold uppercase text-amber-500 tracking-wider">День 🏆</div>}
         </div>
-        <div className={`timer-base ${timeLeft < 10 ? 'timer-warning' : 'timer-normal'}`}>{formatTime(timeLeft)}</div>
+        <div className={`game-timer ${timeLeft < 10 ? 'game-timer-warning' : 'game-timer-normal'}`}>{formatTime(timeLeft)}</div>
         <div className="flex gap-2">
           <button onClick={() => { playSfx('click'); onOpenAbout(); }} className="game-header-btn text-cyan-500"><Info size={24} /></button>
           <button onClick={() => { playSfx('click'); onOpenMenu(); }} className="game-header-btn"><Settings size={24} /></button>
@@ -95,8 +95,8 @@ export const GameScreen = (props: GameScreenProps) => {
         )}
         <div className="flex flex-wrap gap-2 content-start">
           {foundWords.map((w, i) => (
-            <div key={i} className="found-word-item">
-              <span className={w.text.length >= 7 ? "text-amber-500" : ""}>{w.text.toUpperCase()}</span>
+            <div key={i} className="found-word-tag">
+              <span className={w.text.length >= 7 ? "found-word-tag-rare" : ""}>{w.text.toUpperCase()}</span>
               <span className="found-word-score">+{w.score}</span>
             </div>
           ))}
@@ -149,9 +149,9 @@ export const GameScreen = (props: GameScreenProps) => {
         </div>
 
         {/* Сетка букв */}
-        <div className={`grid ${grid.length === 10 ? 'grid-cols-5' : grid.length === 8 ? 'grid-cols-4' : 'grid-cols-3'} gap-2 mb-4`}>
+        <div className={`grid ${grid.length === 10 ? 'grid-cols-10-custom' : grid.length === 8 ? 'grid-cols-8-custom' : 'grid-cols-6-custom'} gap-2 mb-4`}>
           {grid.map((letter, idx) => (
-            <button key={idx} onClick={() => { if (isSwapActive) startSwap(idx); else { playSfx('click'); setCurrentInput(p => [...p, letter]); } }} className={`${grid.length === 10 ? 'aspect-square' : grid.length === 8 ? 'aspect-[5/4]' : 'aspect-[5/3]'} letter-btn ${hintIndices.has(idx) ? 'letter-btn-hint' : ''}`}>{letter}</button>
+            <button key={idx} onClick={() => { if (isSwapActive) startSwap(idx); else { playSfx('click'); setCurrentInput(p => [...p, letter]); } }} className={`${grid.length === 10 ? 'aspect-10' : grid.length === 8 ? 'aspect-8' : 'aspect-6'} letter-btn ${hintIndices.has(idx) ? 'letter-btn-hint' : ''}`}>{letter}</button>
           ))}
         </div>
 

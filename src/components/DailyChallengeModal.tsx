@@ -12,10 +12,10 @@ export const DailyChallengeModal = ({ onClose, onStart, playSfx, completedLevels
   return (
     <div className="modal-overlay z-[400]">
       <div className="modal-content max-w-sm">
-        <div className="flex justify-between items-center mb-6 shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="modal-header-container">
+          <div className="modal-header-title-group">
             <Zap size={28} className="modal-header-icon text-amber-500" fill="currentColor" />
-            <h2 className="text-xl font-bold uppercase tracking-tight">Испытание дня</h2>
+            <h2 className="modal-header-text">Испытание дня</h2>
           </div>
           <button onClick={() => { playSfx('click'); onClose(); }} className="modal-close-btn">
             <X size={24} className="modal-icon" />

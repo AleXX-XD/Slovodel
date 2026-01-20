@@ -175,17 +175,17 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-50 dark:bg-slate-900 animate-in fade-in duration-300">
+    <div className="admin-container">
       <div className="flex flex-col h-full p-4">
         
         {/* Header */}
         <div className="flex justify-between items-center mb-4 shrink-0">
           <div className="flex items-center gap-3">
             <Shield size={28} className="modal-header-icon" />
-            <h2 className="text-xl font-bold uppercase tracking-tight text-gray-900 dark:text-white">Админка</h2>
+            <h2 className="admin-header-title">Админка</h2>
           </div>
-          <button onClick={() => { playSfx('click'); onClose(); }} className="p-2 bg-white/70 dark:bg-white/10 rounded-xl hover:bg-black/10 transition-colors">
-            <ArrowLeft size={24} className="text-gray-800 dark:text-white" />
+          <button onClick={() => { playSfx('click'); onClose(); }} className="admin-back-btn">
+            <ArrowLeft size={24} className="admin-back-icon" />
           </button>
         </div>
           
@@ -209,16 +209,16 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
           {activeTab === 'feedback' ? (
             <>
             <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-              <button onClick={() => setFeedbackFilter('all')} className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${feedbackFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-400'}`}>
+              <button onClick={() => setFeedbackFilter('all')} className={`admin-filter-btn ${feedbackFilter === 'all' ? 'admin-filter-btn-active' : 'admin-filter-btn-inactive'}`}>
                 Все
               </button>
-              <button onClick={() => setFeedbackFilter('new')} className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${feedbackFilter === 'new' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-400'}`}>
+              <button onClick={() => setFeedbackFilter('new')} className={`admin-filter-btn ${feedbackFilter === 'new' ? 'admin-filter-btn-active' : 'admin-filter-btn-inactive'}`}>
                 Новые
               </button>
-              <button onClick={() => setFeedbackFilter('replied')} className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${feedbackFilter === 'replied' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-400'}`}>
+              <button onClick={() => setFeedbackFilter('replied')} className={`admin-filter-btn ${feedbackFilter === 'replied' ? 'admin-filter-btn-active' : 'admin-filter-btn-inactive'}`}>
                 С ответом
               </button>
-              <button onClick={() => setFeedbackFilter('archived')} className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${feedbackFilter === 'archived' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-400'}`}>
+              <button onClick={() => setFeedbackFilter('archived')} className={`admin-filter-btn ${feedbackFilter === 'archived' ? 'admin-filter-btn-active' : 'admin-filter-btn-inactive'}`}>
                 Архив
               </button>
             </div>
@@ -226,21 +226,21 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
             isLoading ? <p className="text-center opacity-50 mt-10">Загрузка...</p> :
             filteredFeedbacks.length === 0 ? <p className="text-center opacity-50 mt-10">Нет отзывов</p> :
             filteredFeedbacks.map((fb, i) => (
-              <div key={i} className="bg-white/40 dark:bg-white/5 p-4 rounded-2xl border border-white/10">
+              <div key={i} className="admin-card">
                 <div className="flex justify-between items-start mb-2">
-                  <span className="font-bold text-indigo-600 dark:text-indigo-300 text-sm">{fb.username}</span>
+                  <span className="admin-card-header-text">{fb.username}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] opacity-50">{new Date(fb.created_at).toLocaleDateString()}</span>
                     <button onClick={() => handleArchive(fb.id)} className="text-gray-400 hover:text-indigo-500 transition-colors" title="В архив"><Archive size={14} /></button>
                     <button onClick={() => handleDelete(fb.id)} className="text-gray-400 hover:text-red-500 transition-colors" title="Удалить"><Trash2 size={14} /></button>
                   </div>
                 </div>
-                <p className="text-sm text-gray-800 dark:text-white/90 whitespace-pre-wrap">{fb.message}</p>
+                <p className="admin-text-content">{fb.message}</p>
                 
                 {fb.status === 'replied' ? (
-                  <div className="mt-3 pl-3 border-l-2 border-green-500">
-                    <p className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase">Ответ отправлен:</p>
-                    <p className="text-xs text-gray-600 dark:text-gray-300">{fb.admin_reply}</p>
+                  <div className="admin-reply-box">
+                    <p className="admin-reply-label">Ответ отправлен:</p>
+                    <p className="admin-reply-text">{fb.admin_reply}</p>
                   </div>
                 ) : (
                   <div className="mt-3">
@@ -250,7 +250,7 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
                           value={replyText} 
                           onChange={(e) => setReplyText(e.target.value)} 
                           placeholder="Ваш ответ..." 
-                          className="flex-1 bg-white/50 dark:bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm outline-none"
+                          className="flex-1 admin-input-field"
                         />
                         <button onClick={() => handleSendReply(fb)} className="p-2 bg-green-500 text-white rounded-xl"><Send size={16} /></button>
                         <button onClick={() => setReplyingId(null)} className="p-2 bg-gray-300 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl"><X size={16} /></button>
@@ -265,14 +265,14 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
             </>
           ) : activeTab === 'dictionary' ? (
             <div className="space-y-4">
-              <div className="bg-white/40 dark:bg-white/5 p-4 rounded-2xl border border-white/10">
-                <label className="text-xs font-bold uppercase opacity-60 mb-2 block">Поиск и проверка</label>
+              <div className="admin-card">
+                <label className="admin-section-label">Поиск и проверка</label>
                 <div className="flex gap-2 mb-2">
                   <input 
                     value={searchQuery} 
                     onChange={(e) => { setSearchQuery(e.target.value); setSearchResult(null); }} 
                     placeholder="Поиск..." 
-                    className="flex-1 bg-white/50 dark:bg-black/20 border border-white/10 rounded-xl px-3 py-2 outline-none" 
+                    className="flex-1 admin-input-field" 
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   />
                   <button onClick={handleSearch} className="p-3 rounded-xl text-white bg-blue-500 hover:bg-blue-600 transition-all">
@@ -287,10 +287,10 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
                 )}
               </div>
 
-              <div className="bg-white/40 dark:bg-white/5 p-4 rounded-2xl border border-white/10">
-                <label className="text-xs font-bold uppercase opacity-60 mb-2 block">Добавить слово в базу</label>
+              <div className="admin-card">
+                <label className="admin-section-label">Добавить слово в базу</label>
                 <div className="flex gap-2">
-                  <input value={newWord} onChange={(e) => setNewWord(e.target.value)} placeholder="Слово..." className="flex-1 bg-white/50 dark:bg-black/20 border border-white/10 rounded-xl px-3 py-2 outline-none" />
+                  <input value={newWord} onChange={(e) => setNewWord(e.target.value)} placeholder="Слово..." className="flex-1 admin-input-field" />
                   <button onClick={handleAddWord} className={`p-3 rounded-xl text-white transition-all ${wordStatus === 'success' ? 'bg-green-500' : 'bg-indigo-600'}`}>
                     {wordStatus === 'success' ? <Check size={20} /> : <Send size={20} />}
                   </button>
@@ -328,8 +328,8 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
             </div>
           ) : activeTab === 'broadcast' ? (
             <div className="space-y-4">
-              <div className="bg-white/40 dark:bg-white/5 p-4 rounded-2xl border border-white/10">
-                <label className="text-xs font-bold uppercase opacity-60 mb-2 block text-gray-800 dark:text-white">Сообщение для всех игроков</label>
+              <div className="admin-card">
+                <label className="admin-section-label">Сообщение для всех игроков</label>
                 <textarea
                   value={broadcastMessage}
                   onChange={(e) => setBroadcastMessage(e.target.value)}
@@ -344,8 +344,8 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="bg-white/40 dark:bg-white/5 p-4 rounded-2xl border border-white/10">
-                <label className="text-xs font-bold uppercase opacity-60 mb-4 block text-gray-800 dark:text-white">Проверка визуального стиля</label>
+              <div className="admin-card">
+                <label className="admin-section-label">Проверка визуального стиля</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button onClick={() => { playSfx('click'); onTestModal('reward') }} className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">🎁 Награда</button>
                   <button onClick={() => { playSfx('click'); onTestModal('rank_up') }} className="p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">👑 Повышение</button>

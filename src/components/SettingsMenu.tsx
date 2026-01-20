@@ -59,9 +59,9 @@ export const SettingsMenu = ({
             </div>
             <button 
               onClick={toggleSfx}
-              className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 ${sfxVolume > 0 ? 'bg-green-500' : 'toggle-btn-inactive'}`}
+              className={`settings-toggle-btn ${sfxVolume > 0 ? 'settings-toggle-active-green' : 'toggle-btn-inactive'}`}
             >
-              <div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 ${sfxVolume > 0 ? 'translate-x-6' : 'translate-x-0'}`} />
+              <div className={`settings-toggle-thumb ${sfxVolume > 0 ? 'translate-x-full-custom' : 'translate-x-0-custom'}`} />
             </button>
           </div>
 
@@ -73,9 +73,9 @@ export const SettingsMenu = ({
             </div>
             <button 
               onClick={toggleMusic}
-              className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 ${musicVolume > 0 ? 'bg-indigo-500' : 'toggle-btn-inactive'}`}
+              className={`settings-toggle-btn ${musicVolume > 0 ? 'settings-toggle-active-indigo' : 'toggle-btn-inactive'}`}
             >
-              <div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 ${musicVolume > 0 ? 'translate-x-6' : 'translate-x-0'}`} />
+              <div className={`settings-toggle-thumb ${musicVolume > 0 ? 'translate-x-full-custom' : 'translate-x-0-custom'}`} />
             </button>
           </div>
 
@@ -87,9 +87,9 @@ export const SettingsMenu = ({
             </div>
             <button 
               onClick={toggleTheme}
-              className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 ${theme === 'dark' ? 'bg-purple-600' : 'bg-amber-400'}`}
+              className={`settings-toggle-btn ${theme === 'dark' ? 'settings-toggle-active-purple' : 'settings-toggle-active-amber'}`}
             >
-              <div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 ${theme === 'dark' ? 'translate-x-6' : 'translate-x-0'}`} />
+              <div className={`settings-toggle-thumb ${theme === 'dark' ? 'translate-x-full-custom' : 'translate-x-0-custom'}`} />
             </button>
           </div>
 

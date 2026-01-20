@@ -21,10 +21,10 @@ export const FeedbackListModal = ({ onClose, playSfx, fetchFeedbacks }: Feedback
   return (
     <div className="modal-overlay z-[400]">
       <div className="modal-content h-[85vh] flex flex-col">
-        <div className="flex justify-between items-center mb-6 shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="modal-header-container">
+          <div className="modal-header-title-group">
             <MessageCircle size={28} className="modal-header-icon" />
-            <h2 className="text-xl font-bold uppercase tracking-tight">Отзывы</h2>
+            <h2 className="modal-header-text">Отзывы</h2>
           </div>
           <button onClick={() => { playSfx('click'); onClose(); }} className="modal-close-btn">
             <X size={24} className="modal-icon" />
@@ -37,12 +37,12 @@ export const FeedbackListModal = ({ onClose, playSfx, fetchFeedbacks }: Feedback
             <p className="text-center opacity-50 mt-10">Нет отзывов</p>
           ) : (
             feedbacks.map((fb, i) => (
-              <div key={i} className="bg-white/40 dark:bg-white/5 p-4 rounded-2xl border border-white/10">
+              <div key={i} className="admin-card">
                 <div className="flex justify-between items-start mb-2">
-                  <span className="font-bold text-indigo-600 dark:text-indigo-300 text-sm">{fb.username}</span>
+                  <span className="admin-card-header-text">{fb.username}</span>
                   <span className="text-[10px] opacity-50">{new Date(fb.created_at).toLocaleDateString()}</span>
                 </div>
-                <p className="text-sm text-gray-800 dark:text-white/90 whitespace-pre-wrap">{fb.message}</p>
+                <p className="admin-text-content">{fb.message}</p>
               </div>
             ))
           )}

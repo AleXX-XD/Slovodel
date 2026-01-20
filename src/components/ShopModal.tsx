@@ -69,10 +69,10 @@ export const ShopModal = ({ onClose, playSfx, coins, onBuyBonuses, initialTab = 
   return (
     <div className="modal-overlay z-[400]">
       <div className="modal-content max-w-sm h-[80vh] flex flex-col">
-        <div className="flex justify-between items-center mb-4 shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="modal-header-container">
+          <div className="modal-header-title-group">
             <ShoppingBag size={28} className="modal-header-icon" />
-            <h2 className="text-xl font-bold uppercase tracking-tight">Магазин</h2>
+            <h2 className="modal-header-text">Магазин</h2>
           </div>
           <button onClick={() => { playSfx('click'); onClose(); }} className="modal-close-btn">
             <X size={24} className="modal-icon" />
@@ -104,7 +104,7 @@ export const ShopModal = ({ onClose, playSfx, coins, onBuyBonuses, initialTab = 
               {bonusItems.map((item) => {
                 const count = getQuantity(item.id);
                 return (
-                  <div key={item.id} className="shop-item-card !flex-col !items-stretch !h-auto gap-3">
+                  <div key={item.id} className="shop-item-card-col">
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-3">
                         <div className="shop-item-icon-bg">{item.icon}</div>

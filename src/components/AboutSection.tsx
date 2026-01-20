@@ -30,10 +30,10 @@ export const AboutSection = ({ onClose, playSfx, bonuses, onOpenShop, onSubmitFe
       <div className="modal-content max-w-sm text-left flex flex-col max-h-[85vh]">
         
         {/* Header */}
-        <div className="flex justify-between items-center mb-6 shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="modal-header-container">
+          <div className="modal-header-title-group">
             <Info size={28} className="modal-header-icon" />
-            <h2 className="text-xl font-bold uppercase tracking-tight">Помощь</h2>
+            <h2 className="modal-header-text">Помощь</h2>
           </div>
           <button onClick={() => { playSfx('click'); onClose(); }} className="modal-close-btn">
             <X size={24} className="modal-icon" />
@@ -74,8 +74,8 @@ export const AboutSection = ({ onClose, playSfx, bonuses, onOpenShop, onSubmitFe
             </div>
             
             {isDailyMode ? (
-              <div className="p-3 bg-amber-500/10 dark:bg-amber-500/20 rounded-xl border border-amber-500/20 text-center">
-                <p className="text-xs font-bold text-amber-700 dark:text-amber-300">
+              <div className="daily-bonus-notice">
+                <p className="daily-bonus-text">
                   В Испытании дня количество бонусов фиксировано.
                 </p>
               </div>
@@ -124,7 +124,7 @@ export const AboutSection = ({ onClose, playSfx, bonuses, onOpenShop, onSubmitFe
             </h3>
             <p className="text-xs mb-3 opacity-80">Нашли ошибку или хотите добавить слово? Напишите об этом нам 👇</p>
             {isSent ? (
-              <div className="flex items-center justify-center gap-2 p-3 bg-green-500/20 text-green-600 dark:text-green-400 rounded-xl font-bold text-sm animate-in fade-in zoom-in">
+              <div className="feedback-success-msg">
                 <Check size={18} /> Отправлено!
               </div>
             ) : (
@@ -151,7 +151,7 @@ export const AboutSection = ({ onClose, playSfx, bonuses, onOpenShop, onSubmitFe
 
         {/* Footer */}
         <div className="mt-4 shrink-0">
-           <div className="text-center opacity-30 text-[10px] font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+           <div className="creator-footer">
             Created by @AleXX_4D
           </div>
         </div>

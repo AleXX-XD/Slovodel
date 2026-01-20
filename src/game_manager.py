@@ -122,24 +122,32 @@ def process_broadcasts():
 def process_results_notification():
     try:
         now_utc = datetime.now(timezone.utc)
+        print(f"--- [RESULTS] Проверка времени: {now_utc.strftime('%H:%M:%S')} UTC ---")
+
         # Если время меньше 03:00 UTC, ничего не делаем
         if now_utc.hour < 3:
+            print(f"Пропуск рассылки результатов: текущий час {now_utc.hour} < 3.")
             return
 
         # Получаем ID текущего активного испытания
         response = supabase.table("challenges").select("id").order("id", desc=True).limit(1).execute()
-        if not response.data: return
+        if not response.data: 
+            print("Нет активных испытаний в базе.")
+            return
         
         current_active_id = response.data[0]['id']
         # Нас интересует предыдущее испытание, которое закончилось сегодня ночью
         target_id = current_active_id - 1
         
-        if target_id < 1: return
+        if target_id < 1: 
+            print(f"Целевой ID испытания некорректен ({target_id}).")
+            return
 
         # Проверяем, была ли уже рассылка для этого ID (ищем системный флаг)
         flag_msg = f"[SYSTEM] Results sent for challenge {target_id}"
         check = supabase.table("broadcasts").select("id").eq("message", flag_msg).execute()
         if check.data:
+            print(f"Рассылка для испытания №{target_id} уже была выполнена.")
             return # Рассылка уже была
 
         print(f"[{now_utc.strftime('%H:%M:%S')}] Начинаем рассылку результатов за испытание №{target_id}...")
@@ -176,6 +184,9 @@ def process_results_notification():
 # --- ЕЖЕДНЕВНОЕ ОБНОВЛЕНИЕ ---
 def process_daily_update():
     try:
+        now_utc = datetime.now(timezone.utc)
+        print(f"--- [DAILY UPDATE] Проверка времени: {now_utc.strftime('%H:%M:%S')} UTC ---")
+        
         # 1. Проверяем, пора ли обновлять испытание
         response = supabase.table("challenges").select("*").order("id", desc=True).limit(1).execute()
         
@@ -185,7 +196,8 @@ def process_daily_update():
             if end_time_str:
                 end_time = datetime.fromisoformat(end_time_str.replace('Z', '+00:00'))
                 # Если время еще не пришло, выходим
-                if datetime.now(timezone.utc) < end_time:
+                if now_utc < end_time:
+                    print(f"Рано обновлять испытание. Текущее время: {now_utc}, Дедлайн: {end_time}")
                     return
 
         print(f"\n[{datetime.now().strftime('%H:%M:%S')}] --- НАЧАЛО ЕЖЕДНЕВНОГО ОБНОВЛЕНИЯ ---")

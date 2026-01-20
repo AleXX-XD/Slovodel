@@ -34,10 +34,10 @@ export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, curren
     <div className="modal-overlay z-[400]">
       <div className="modal-content h-[85vh] flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center mb-4 shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="modal-header-container">
+          <div className="modal-header-title-group">
             <Trophy size={28} className="modal-header-icon text-yellow-500" />
-            <h2 className="text-xl font-bold uppercase tracking-tight">Топ Эрудитов</h2>
+            <h2 className="modal-header-text">Топ Эрудитов</h2>
           </div>
           <button onClick={() => { playSfx('click'); onClose(); }} className="modal-close-btn">
             <X size={24} className="modal-icon" />
@@ -99,7 +99,7 @@ export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, curren
                     <div className="w-6 flex justify-center items-center">
                       {getPlaceIcon(rank - 1)}
                     </div>
-                    <img src={player.avatar_url || './image/book_face.png'} alt="avatar" className="w-8 h-8 rounded-full bg-indigo-100" />
+                    <img src={player.avatar_url || './image/book_face.png'} alt="avatar" className="avatar-sm" />
                     <div className="flex-1 min-w-0 text-left">
                       <p className={`leaderboard-name ${isCurrentUser ? 'leaderboard-name-active' : ''}`}>{player.name}</p>
                       <p className="leaderboard-subtext">{activeTab === 'all' ? getUserRank(player.score) : 'Очки за испытание'}</p>
@@ -122,7 +122,7 @@ export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, curren
                   <div className="w-6 flex justify-center items-center">
                     {getPlaceIcon(currentUserRankData.rank - 1)}
                   </div>
-                  <img src={currentUserRankData.avatar_url || './image/book_face.png'} alt="avatar" className="w-10 h-10 rounded-full bg-indigo-100" />
+                  <img src={currentUserRankData.avatar_url || './image/book_face.png'} alt="avatar" className="avatar-md" />
                   <div className="flex-1 min-w-0 text-left">
                     <p className="leaderboard-name leaderboard-name-active">{currentUserRankData.username}</p>
                     <p className="leaderboard-subtext">{getUserRank(currentUserRankData.score)}</p>

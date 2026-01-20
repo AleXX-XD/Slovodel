@@ -26,8 +26,6 @@ interface MainMenuProps {
   onOpenShop: (tab?: 'bonuses' | 'coins') => void;
 }
 
-
-
 export const MainMenu = ({
  streak, streakMilestone, setStreakMilestone, hasPlayedToday,
   openGlobalRanking, openAchievements, playSfx, setShowCollection, onOpenAbout, setIsMenuOpen,
@@ -71,7 +69,7 @@ export const MainMenu = ({
         <div className="modal-overlay z-[100]">
           <div className="modal-content">
             <div className="text-6xl mb-4 animate-bounce">🔥</div>
-            <h2 className="modal-title text-amber-500">Новое достижение!</h2>
+            <h2 className="modal-title text-title-amber">Новое достижение!</h2>
             <p className="text-lg font-bold my-4 italic text-gray-800 dark:text-white break-words px-4">"{streakMilestone}"</p>
             <p className="text-sm opacity-70 mb-6 text-gray-600 dark:text-gray-200">Твоя серия: {streak} дн.</p>
             <button onClick={() => { playSfx('click'); setStreakMilestone(null); }} className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-transform uppercase">Продолжить</button>
@@ -82,25 +80,25 @@ export const MainMenu = ({
       {/* Верхняя панель (Иконки) */}
       <div className="w-full flex justify-between items-center z-10 shrink-0 gap-2">
         <div className="flex gap-1 shrink-0">
-          <button onClick={openGlobalRanking} className={`stat-card text-yellow-400`}>
+          <button onClick={openGlobalRanking} className="stat-card-icon stat-card-icon-yellow">
             <Trophy size={24} />
           </button>
-          <div className={`px-2 py-2 rounded-2xl font-bold flex items-center gap-2 shadow-lg stat-card`} title="Ударный режим">
-            <span className={`${hasPlayedToday ? "animate-pulse text-red-500" : "opacity-50 grayscale text-gray-500"}`}>
+          <div className="stat-badge-fire" title="Ударный режим">
+            <span className={hasPlayedToday ? "fire-icon-active" : "fire-icon-inactive"}>
               <Flame size={24} fill={hasPlayedToday ? "currentColor" : "none"} />
             </span>
-            <span className={`text-sm ${hasPlayedToday ? "text-red-500" : "opacity-50 text-gray-600 dark:text-gray-300"}`}>{streak}</span>
+            <span className={`text-sm ${hasPlayedToday ? "fire-text-active" : "fire-text-inactive"}`}>{streak}</span>
           </div>
         </div>
 
         <div className="flex gap-1 shrink-0">
-          <button onClick={() => { playSfx('click'); setShowCollection(true); }} className={`stat-card text-blue-600`}>
+          <button onClick={() => { playSfx('click'); setShowCollection(true); }} className="stat-card-icon stat-card-icon-blue">
             <BookOpenText size={24} />
           </button>
-          <button onClick={() => { playSfx('click'); onOpenAbout(); }} className={`stat-card text-cyan-500`}>
+          <button onClick={() => { playSfx('click'); onOpenAbout(); }} className="stat-card-icon stat-card-icon-cyan">
             <Info size={24} />
           </button>
-          <button onClick={() => setIsMenuOpen(true)} className={`stat-card main_up`}>
+          <button onClick={() => setIsMenuOpen(true)} className="stat-card-icon main_up">
             <Settings size={24} />
           </button>
         </div>
@@ -142,10 +140,7 @@ export const MainMenu = ({
         <div className="space-y-3">
         <button
           onClick={() => { playSfx('click'); openDailyChallenge(); }}
-          className={`w-full py-3 font-bold rounded-2xl border transition-all uppercase text-sm flex flex-col items-center justify-center relative overflow-hidden group
-            ${isDailyPlayedToday
-              ? 'game-day-end'
-              : 'game-day'}`}
+          className={`game-day-btn group ${isDailyPlayedToday ? 'game-day-end' : 'game-day'}`}
         >
           {isDailyPlayedToday ? (
              <span className="text-lg relative z-10 flex items-center gap-2"><CheckCircle size={20} /> Рейтинг дня</span>
@@ -165,19 +160,19 @@ export const MainMenu = ({
         </button>
 
         <div className="grid grid-cols-1 gap-3">
-          <button onClick={() => startGame(10)} className="game_easy font-bold">
+          <button onClick={() => startGame(10)} className="game_easy game-difficulty-btn">
             Лёгкий <span className="opacity-80 ml-1 normal-case font-medium">( x 1 )</span>
           </button>
-          <button onClick={() => startGame(8)} className="game_medium font-bold">
+          <button onClick={() => startGame(8)} className="game_medium game-difficulty-btn">
             Средний <span className="opacity-80 ml-1 normal-case font-medium">( x 1.5 )</span>
           </button>
-          <button onClick={() => startGame(6)} className="game_hard font-bold">
+          <button onClick={() => startGame(6)} className="game_hard game-difficulty-btn">
             Сложный <span className="opacity-80 ml-1 normal-case font-medium">( x 2 )</span>
           </button>
         </div>
         </div>
 
-        <div className="text-center opacity-30 text-[10px] font-bold uppercase tracking-widest text-gray-500">Slovodel • 2026</div>
+        <div className="settings-footer">Slovodel • 2026</div>
       </div>
     </div>
   );

@@ -46,7 +46,41 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
-@layer utilities {
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoomIn {
+  from { transform: scale(0.95); }
+  to { transform: scale(1); }
+}
+
+@keyframes slideInFromTop {
+  from { transform: translateY(-0.25rem); }
+  to { transform: translateY(0); }
+}
+
+.animate-in {
+  animation-duration: 300ms;
+  animation-fill-mode: forwards;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-in {
+  animation-name: fadeIn;
+}
+
+.zoom-in {
+  animation-name: zoomIn;
+}
+
+.slide-in-from-top-1 {
+  animation-name: slideInFromTop;
+}
+
+@layer base {
+
   /* Специальный класс для градиентного текста, работающий в Safari/iOS */
   .text-gradient-custom {
     @apply text-violet-800;
@@ -58,6 +92,14 @@
 
   }
 
+  /* --- FIX: Принудительная поддержка Blur для старых iOS (12-14) --- */
+  .backdrop-blur-sm { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+  .backdrop-blur-md { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+  .backdrop-blur-lg { -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+  .backdrop-blur-xl { -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); }
+  .backdrop-blur-2xl { -webkit-backdrop-filter: blur(40px); backdrop-filter: blur(40px); }
+  .backdrop-blur-3xl { -webkit-backdrop-filter: blur(64px); backdrop-filter: blur(64px); }
+  
   /* --- Глобальные компоненты интерфейса --- */
 
   /* Главный контейнер приложения */
@@ -1214,4 +1256,310 @@
   .shop-footer-btn-active {
     @apply bg-green-500 text-white active:scale-95 hover:bg-green-600;
   }
+
+  /* --- Semantic Refactoring (MainMenu & GameScreen) --- */
+
+  /* MainMenu */
+  .stat-badge-fire {
+    @apply px-2 py-2 rounded-2xl font-bold flex items-center gap-2 shadow-lg bg-white/60 backdrop-blur-md border border-white/40 text-center;
+  }
+  .dark .stat-badge-fire {
+    @apply bg-white/10 border-white/10;
+  }
+  
+  .fire-icon-active {
+    @apply animate-pulse text-red-500;
+  }
+  .fire-icon-inactive {
+    @apply opacity-50 grayscale text-gray-500;
+  }
+  
+  .fire-text-active {
+    @apply text-red-500;
+  }
+  .fire-text-inactive {
+    @apply opacity-50 text-gray-600;
+  }
+  .dark .fire-text-inactive {
+    @apply text-gray-300;
+  }
+
+  .stat-card-icon {
+    @apply bg-white/60 backdrop-blur-md p-3 rounded-2xl shadow-lg border border-white/40 text-center active:scale-95 transition-transform;
+  }
+  .dark .stat-card-icon {
+    @apply bg-white/10 border-white/10;
+  }
+
+  .stat-card-icon-yellow { @apply text-yellow-400; }
+  .stat-card-icon-blue { @apply text-blue-600; }
+  .stat-card-icon-cyan { @apply text-cyan-500; }
+  
+  .game-day-btn {
+    @apply w-full py-3 font-bold rounded-2xl border transition-all uppercase text-sm flex flex-col items-center justify-center relative overflow-hidden;
+  }
+  
+  .game-difficulty-btn {
+    @apply font-bold text-center;
+  }
+
+  /* GameScreen */
+  .game-timer {
+    @apply text-2xl font-mono font-bold;
+  }
+  .game-timer-warning {
+    @apply text-red-500 animate-pulse;
+  }
+  .dark .game-timer-warning {
+    @apply text-red-400;
+  }
+  .game-timer-normal {
+    @apply text-gray-700;
+  }
+  .dark .game-timer-normal {
+    @apply text-gray-50;
+  }
+  
+  .found-word-tag {
+    @apply bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-lg font-bold text-sm text-indigo-700 shadow-sm border border-white/40 flex items-center gap-2;
+    animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .dark .found-word-tag {
+    @apply bg-white/10 text-white border-white/10;
+  }
+  
+  .found-word-tag-rare {
+    @apply text-amber-500;
+  }
+
+  .grid-cols-10-custom { @apply grid-cols-5; }
+  .grid-cols-8-custom { @apply grid-cols-4; }
+  .grid-cols-6-custom { @apply grid-cols-3; }
+
+  .aspect-10 { @apply aspect-square; }
+  .aspect-8 { @apply aspect-[5/4]; }
+  .aspect-6 { @apply aspect-[5/3]; }
+
+  /* SettingsMenu */
+  .settings-toggle-btn {
+    @apply w-14 h-8 rounded-full p-1 transition-colors duration-300;
+  }
+  .settings-toggle-thumb {
+    @apply w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300;
+  }
+  .settings-toggle-active-green { @apply bg-green-500; }
+  .settings-toggle-active-indigo { @apply bg-indigo-500; }
+  .settings-toggle-active-purple { @apply bg-purple-600; }
+  .settings-toggle-active-amber { @apply bg-amber-400; }
+  
+  .translate-x-full-custom { @apply translate-x-6; }
+  .translate-x-0-custom { @apply translate-x-0; }
+
+  /* --- Consolidated Modal Styles --- */
+
+  /* Common Modal Headers */
+  .modal-header-container {
+    @apply flex justify-between items-center mb-6 shrink-0;
+  }
+  .modal-header-title-group {
+    @apply flex items-center gap-3;
+  }
+  .modal-header-text {
+    @apply text-xl font-bold uppercase tracking-tight;
+  }
+
+  /* About Section & Lists */
+  .daily-bonus-notice {
+    @apply p-3 bg-amber-500/10 rounded-xl border border-amber-500/20 text-center;
+  }
+  .dark .daily-bonus-notice {
+    @apply bg-amber-500/20;
+  }
+  .daily-bonus-text {
+    @apply text-xs font-bold text-amber-700;
+  }
+  .dark .daily-bonus-text {
+    @apply text-amber-300;
+  }
+  
+  .feedback-success-msg {
+    @apply flex items-center justify-center gap-2 p-3 bg-green-500/20 text-green-600 rounded-xl font-bold text-sm;
+    animation-duration: 300ms;
+    animation-fill-mode: forwards;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    animation-name: fadeIn, zoomIn;
+  }
+  .dark .feedback-success-msg {
+    @apply text-green-400;
+  }
+  
+  .creator-footer {
+    @apply text-center opacity-30 text-[10px] font-bold uppercase tracking-widest text-gray-500;
+  }
+  .dark .creator-footer {
+    @apply text-gray-400;
+  }
+
+  /* Achievements / Profile */
+  .level-progress-fill {
+    @apply h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-1000;
+  }
+  
+  .stat-box-gold { @apply bg-yellow-100/50 border-yellow-200; }
+  .dark .stat-box-gold { @apply bg-yellow-900/20 border-yellow-700/30; }
+  
+  .stat-box-silver { @apply bg-gray-100/50 border-gray-200; }
+  .dark .stat-box-silver { @apply bg-gray-800/30 border-gray-600/30; }
+  
+  .stat-box-bronze { @apply bg-orange-100/50 border-orange-200; }
+  .dark .stat-box-bronze { @apply bg-orange-900/20 border-orange-700/30; }
+  
+  .profile-btn-primary {
+    @apply w-full py-3 bg-violet-600 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all uppercase text-sm flex items-center justify-center gap-2;
+  }
+
+  /* Leaderboard */
+  .avatar-sm {
+    @apply w-8 h-8 rounded-full bg-indigo-100;
+  }
+  .avatar-md {
+    @apply w-10 h-10 rounded-full bg-indigo-100;
+  }
+
+  /* Collection */
+  .collection-empty-state {
+    @apply h-full flex flex-col items-center justify-center text-center space-y-4 py-10 opacity-60;
+  }
+  .collection-empty-icon {
+    @apply text-gray-400;
+  }
+  .dark .collection-empty-icon {
+    @apply text-gray-600;
+  }
+
+  /* Shop */
+  .shop-item-card-col {
+    @apply bg-white/60 p-2 rounded-2xl border border-white/40 flex items-center justify-between !flex-col !items-stretch !h-auto gap-3;
+  }
+  .dark .shop-item-card-col {
+    @apply bg-white/10 border-white/10;
+  }
+
+  /* Admin Panel */
+  .admin-container {
+    @apply h-full flex flex-col bg-gray-50;
+    animation-duration: 300ms;
+    animation-fill-mode: forwards;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    animation-name: fadeIn;
+  }
+  .dark .admin-container {
+    @apply bg-slate-900;
+  }
+  
+  .admin-header-title {
+    @apply text-xl font-bold uppercase tracking-tight text-gray-900;
+  }
+  .dark .admin-header-title {
+    @apply text-white;
+  }
+  
+  .admin-back-btn {
+    @apply p-2 bg-white/70 rounded-xl hover:bg-black/10 transition-colors;
+  }
+  .dark .admin-back-btn {
+    @apply bg-white/10;
+  }
+  .admin-back-icon {
+    @apply text-gray-800;
+  }
+  .dark .admin-back-icon {
+    @apply text-white;
+  }
+
+  .admin-filter-btn {
+    @apply px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors;
+  }
+  .admin-filter-btn-active {
+    @apply bg-indigo-600 text-white;
+  }
+  .admin-filter-btn-inactive {
+    @apply bg-gray-200 text-gray-600;
+  }
+  .dark .admin-filter-btn-inactive {
+    @apply bg-white/10 text-gray-400;
+  }
+
+  .admin-card {
+    @apply bg-white/40 p-4 rounded-2xl border border-white/10;
+  }
+  .dark .admin-card {
+    @apply bg-white/5;
+  }
+  
+  .admin-card-header-text {
+    @apply font-bold text-indigo-600 text-sm;
+  }
+  .dark .admin-card-header-text {
+    @apply text-indigo-300;
+  }
+
+  .admin-text-content {
+    @apply text-sm text-gray-800 whitespace-pre-wrap;
+  }
+  .dark .admin-text-content {
+    @apply text-white/90;
+  }
+
+  .admin-reply-box {
+    @apply mt-3 pl-3 border-l-2 border-green-500;
+  }
+  .admin-reply-label {
+    @apply text-[10px] font-bold text-green-600 uppercase;
+  }
+  .dark .admin-reply-label {
+    @apply text-green-400;
+  }
+  .admin-reply-text {
+    @apply text-xs text-gray-600;
+  }
+  .dark .admin-reply-text {
+    @apply text-gray-300;
+  }
+
+  .admin-input-field {
+    @apply bg-white/50 border border-white/10 rounded-xl px-3 py-2 outline-none;
+  }
+  .dark .admin-input-field {
+    @apply bg-black/20;
+  }
+  
+  .admin-section-label {
+    @apply text-xs font-bold uppercase opacity-60 mb-2 block text-gray-800;
+  }
+  .dark .admin-section-label {
+    @apply text-white;
+  }
+
+  /* --- Fallback для старых устройств без поддержки backdrop-filter (Huawei, старый Android) --- */
+  @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    .modal-content, .game-panel, .stat-box, .profile-block, .shop-item-card-col, .leaderboard-card, 
+    .about-block, .settings-row, .game_easy, .game_medium, .game_hard, .game-header-btn, .bonus-card,
+    .collection-item, .hint-item, .rank-item, .found-word-item {
+      @apply !bg-white/95 !border-gray-300;
+    }
+    
+    .dark .modal-content, .dark .game-panel, .dark .stat-box, .dark .profile-block, 
+    .dark .shop-item-card-col, .dark .leaderboard-card, .dark .about-block, .dark .settings-row,
+    .dark .game_easy, .dark .game_medium, .dark .game_hard, .dark .game-header-btn, .dark .bonus-card,
+    .dark .collection-item, .dark .hint-item, .dark .rank-item, .dark .found-word-item {
+      @apply !bg-slate-900/95 !border-slate-700;
+    }
+
+    /* Убираем тени, если они глючат на старых GPU */
+    .shadow-lg, .shadow-xl, .shadow-2xl {
+       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+    }
+  }
+
 }
