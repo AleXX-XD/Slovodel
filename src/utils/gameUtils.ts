@@ -1,4 +1,4 @@
-import { RARE_LIST, VOWELS_UNIQUE, COMMON_CONSONANTS } from './constants';
+import { RARE_LIST, VOWELS_UNIQUE, COMMON_CONSONANTS, RANKS } from './constants';
 
 // Длительность испытания (10 минут).
 export const CHALLENGE_PERIOD_MS = 10 * 60 * 1000;
@@ -58,16 +58,39 @@ export const getStreakTitle = (s: number) => {
   return null;
 };
 
+export const getLevelData = (score: number) => {
+  if (score < 1000) return { level: 0, min: 0, next: 1000 };
+  if (score < 2500) return { level: 1, min: 1000, next: 2500 };
+  if (score < 5000) return { level: 2, min: 2500, next: 5000 };
+  if (score < 10000) return { level: 3, min: 5000, next: 10000 };
+  if (score < 20000) return { level: 4, min: 10000, next: 20000 };
+  if (score < 50000) return { level: 5, min: 20000, next: 50000 };
+  if (score < 100000) return { level: 6, min: 50000, next: 100000 };
+  if (score < 200000) return { level: 7, min: 100000, next: 200000 };
+  if (score < 500000) return { level: 8, min: 200000, next: 500000 };
+  if (score < 1000000) return { level: 9, min: 500000, next: 1000000 };
+
+  // Уровень 10 и выше (каждые 500к)
+  const base = 1000000;
+  const step = 500000;
+  const extra = score - base;
+  const extraLevels = Math.floor(extra / step);
+  const currentLevelStart = base + (extraLevels * step);
+  
+  return {
+    level: 10 + extraLevels,
+    min: currentLevelStart,
+    next: currentLevelStart + step
+  };
+};
+
 export const getUserRank = (points: number) => {
-  if (points < 2000) return "Новичок-грамотей";
-  if (points < 5000) return "Книжный червь";
-  if (points < 10000) return "Буквенный следопыт";
-  if (points < 20000) return "Словесный скаут";
-  if (points < 50000) return "Адепт алфавита";
-  if (points < 100000) return "Мастер слов";
-  if (points < 200000) return "Магистр букв";
-  if (points < 500000) return "Живая энциклопедия";
-  return "Оракул Словодела";
+  const { level } = getLevelData(points);
+  return `${level} уровень`;
+};
+
+export const getRankMeta = (level: number) => {
+  return [...RANKS].reverse().find(r => level >= r.minLevel) || RANKS[0];
 };
 
 export const formatTime = (totalSeconds: number) => {
@@ -76,31 +99,18 @@ export const formatTime = (totalSeconds: number) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-export const getLevelProgress = (s: number) => {
-  if (s < 2000) return (s / 2000) * 100;
-  if (s < 5000) return ((s - 2000) / 3000) * 100;
-  if (s < 10000) return ((s - 5000) / 5000) * 100;
-  if (s < 20000) return ((s - 10000) / 10000) * 100;
-  if (s < 50000) return ((s - 20000) / 30000) * 100;
-  if (s < 100000) return ((s - 50000) / 50000) * 100;
-  if (s < 200000) return ((s - 100000) / 100000) * 100;
-  if (s < 500000) return ((s - 200000) / 300000) * 100;
-  return 100;
+export const getLevelProgress = (points: number) => {
+  const { min, next } = getLevelData(points);
+  const progress = ((points - min) / (next - min)) * 100;
+  return Math.max(0, Math.min(100, progress));
 };
 
-export const getNextLevelTarget = (s: number) => {
-  if (s < 2000) return 2000;
-  if (s < 5000) return 5000;
-  if (s < 10000) return 10000;
-  if (s < 20000) return 20000;
-  if (s < 50000) return 50000;
-  if (s < 100000) return 100000;
-  if (s < 200000) return 200000;
-  if (s < 500000) return 500000;
-  return null;
+export const getNextLevelTarget = (points: number) => {
+  const { next } = getLevelData(points);
+  return next;
 };
 
-export const generateGrid = (level: number, seed?: number) => {
+export const generateGrid = (level: number, seed?: number, forceRare: boolean = false) => {
   const letters = new Set<string>();
   let rareCount = 0;
   
@@ -114,6 +124,13 @@ export const generateGrid = (level: number, seed?: number) => {
     letters.add(v);
   }
 
+  // Если forceRare, то обязательно добавляем одну редкую букву
+  if (forceRare) {
+      const rarePool = RARE_LIST.split('').sort(() => (seed !== undefined ? rand() - 0.5 : Math.random() - 0.5));
+      letters.add(rarePool[0]);
+      rareCount++;
+  }
+
   const rareChance = rand() < 0.3;
 
   // 2. Набор согласных
@@ -121,6 +138,9 @@ export const generateGrid = (level: number, seed?: number) => {
 
   for (const c of consPool) {
     if (letters.size >= level) break;
+
+    // Если буква уже есть (например, редкая добавлена выше), пропускаем
+    if (letters.has(c)) continue;
 
     if (RARE_LIST.includes(c)) {
       if (rareChance && rareCount < 1) {
@@ -143,7 +163,14 @@ export const generateGrid = (level: number, seed?: number) => {
   return Array.from(letters).sort(() => (seed !== undefined ? rand() - 0.5 : Math.random() - 0.5));
 };
 
-export const generateRandomReward = (multiplier: number = 1): { type: 'time' | 'hint' | 'swap' | 'wildcard', amount: number } => {
+export const generateRandomReward = (multiplierOrRank: number | string = 1): { type: 'time' | 'hint' | 'swap' | 'wildcard', amount: number } => {
+  let multiplier = 1;
+  if (typeof multiplierOrRank === 'number') {
+    multiplier = multiplierOrRank;
+  } else {
+    multiplier = getRankMultiplier(multiplierOrRank);
+  }
+
   const rand = Math.random();
   let type: 'time' | 'hint' | 'swap' | 'wildcard';
   let baseAmount = 1;
@@ -165,9 +192,75 @@ export const generateRandomReward = (multiplier: number = 1): { type: 'time' | '
 };
 
 export const getRankMultiplier = (rank: string): number => {
-  if (rank === "Адепт алфавита" || rank === "Мастер слов") return 2;
+  if (rank === "Адепт алфавита") return 2;
   if (rank === "Магистр букв") return 3;
-  if (rank === "Живая энциклопедия") return 4;
-  if (rank === "Оракул Словодела") return 5;
+  if (rank === "Оракул Словодела") return 4;
   return 1;
+};
+
+export const getMarathonSwapIndex = (gridLength: number, forbiddenIndices: number[]) => {
+  const available = [];
+  for (let i = 0; i < gridLength; i++) {
+    if (!forbiddenIndices.includes(i)) available.push(i);
+  }
+  if (available.length === 0) return null;
+  return available[Math.floor(Math.random() * available.length)];
+};
+
+export const replaceLetterAtIndex = (currentGrid: string[], indexToReplace: number) => {
+  const newGrid = [...currentGrid];
+  const oldChar = newGrid[indexToReplace];
+  
+  const isVowel = VOWELS_UNIQUE.includes(oldChar);
+  const isRare = RARE_LIST.includes(oldChar);
+  
+  let newChar = '';
+  let attempts = 0;
+  
+  // Пытаемся найти уникальную букву того же типа, отличную от старой
+  while (attempts < 50) {
+      const rand = Math.random();
+      if (isVowel) {
+          const pool = VOWELS_UNIQUE.split('');
+          newChar = pool[Math.floor(rand * pool.length)];
+      } else if (isRare) {
+          const pool = RARE_LIST.split('');
+          newChar = pool[Math.floor(rand * pool.length)];
+      } else {
+          // Обычная согласная
+          const pool = COMMON_CONSONANTS.split('');
+          newChar = pool[Math.floor(rand * pool.length)];
+      }
+      
+      // Проверка: буквы не должно быть в текущей сетке И она не должна быть равна старой
+      if (!currentGrid.includes(newChar) && newChar !== oldChar) {
+          break;
+      }
+      attempts++;
+  }
+  
+  // Если не нашли уникальную за 50 попыток (маловероятно), меняем на любую допустимую того же типа, кроме старой
+  if (attempts >= 50) {
+      // Резервная попытка просто сменить букву, игнорируя уникальность в сетке, но соблюдая тип и отличие от старой
+      let pool = '';
+      if (isVowel) pool = VOWELS_UNIQUE;
+      else if (isRare) pool = RARE_LIST;
+      else pool = COMMON_CONSONANTS;
+      
+      const filteredPool = pool.split('').filter(c => c !== oldChar);
+      if (filteredPool.length > 0) {
+          newChar = filteredPool[Math.floor(Math.random() * filteredPool.length)];
+      } else {
+          // Если вдруг в пуле всего 1 буква (невозможно для текущих констант), оставляем старую
+          newChar = oldChar;
+      }
+  }
+
+  newGrid[indexToReplace] = newChar;
+  return newGrid;
+};
+
+export const generateMarathonGrid = (seed?: number) => {
+  // Для марафона всегда 10 букв и гарантированно 1 редкая буква
+  return generateGrid(10, seed, true);
 };

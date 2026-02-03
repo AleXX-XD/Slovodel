@@ -12,6 +12,13 @@ interface CollectionModalProps {
   playSfx: (sound: any) => void;
 }
 
+const getWordColorClass = (len: number) => {
+  if (len >= 11) return 'text-pink-600 dark:text-pink-400';
+  if (len >= 9) return 'text-purple-600 dark:text-purple-400';
+  if (len >= 7) return 'text-blue-600 dark:text-blue-400';
+  return 'text-emerald-600 dark:text-emerald-400';
+};
+
 export const CollectionModal = ({ words, onClose, playSfx }: CollectionModalProps) => {
   const sortedWords = [...words].sort((a, b) => {
     if (b.length !== a.length) return b.length - a.length;
@@ -46,7 +53,7 @@ export const CollectionModal = ({ words, onClose, playSfx }: CollectionModalProp
             sortedWords.map((word, i) => (
               <div key={i} className="collection-item animate-pop">
                 <div className="flex flex-col text-left">
-                  <span className="collection-word">{word.text}</span>
+                  <span className={`collection-word ${getWordColorClass(word.length)}`}>{word.text}</span>
                   <span className="collection-meta">{word.length} букв</span>
                 </div>
                 <div className="collection-score">

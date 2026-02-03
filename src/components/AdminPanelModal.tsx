@@ -1,33 +1,49 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Shield, MessageCircle, BookPlus, Send, Check, Trash2, Edit2, Save, Search, Reply, Archive, Megaphone, X, Eye } from 'lucide-react';
-import { getDictionary } from '../utils/dictionary';
+import { ArrowLeft, Shield, MessageCircle, BookPlus, Send, Check, Trash2, Edit2, Search, Reply, Archive, Megaphone, X, Eye, Plus, AlertCircle, Info } from 'lucide-react';
 
 interface AdminPanelModalProps {
   onClose: () => void;
   playSfx: (sound: any) => void;
   fetchFeedbacks: () => Promise<any[]>;
-  addCustomWord: (word: string) => Promise<boolean>;
-  fetchAdminCustomWords: () => Promise<any[]>;
-  deleteCustomWord: (id: number) => Promise<boolean>;
-  updateCustomWord: (id: number, word: string) => Promise<boolean>;
+  addCustomWord: (word: string) => Promise<any>;
+  deleteCustomWord: (idOrWord: number | string) => Promise<boolean>;
+  updateCustomWord: (word: string, definition: string) => Promise<boolean>;
+  onSearchWord: (word: string) => Promise<any>;
   onReply: (feedbackId: number, telegramId: number, text: string) => Promise<boolean>;
   onArchive: (id: number) => Promise<boolean>;
   onDelete: (id: number) => Promise<boolean>;
   onBroadcast: (message: string) => Promise<boolean>;
   onTestModal: (type: string) => void;
+  fetchAdminCustomWords?: any;
 }
 
-export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWord, fetchAdminCustomWords, deleteCustomWord, updateCustomWord, onReply, onArchive, onDelete, onBroadcast, onTestModal }: AdminPanelModalProps) => {
+export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWord, deleteCustomWord, updateCustomWord, onSearchWord, onReply, onArchive, onDelete, onBroadcast, onTestModal }: AdminPanelModalProps) => {
   const [activeTab, setActiveTab] = useState<'feedback' | 'dictionary' | 'broadcast' | 'testing'>('feedback');
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
-  const [customWords, setCustomWords] = useState<any[]>([]);
-  const [newWord, setNewWord] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [wordStatus, setWordStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResult, setSearchResult] = useState<'found' | 'not-found' | null>(null);
+
+  // Notification State
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null);
+
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setNotification({ type, message });
+    if (type === 'success') playSfx('success'); // Или другой звук
+    if (type === 'error') playSfx('error');
+    setTimeout(() => setNotification(null), 3500);
+  };
+
+  // Dictionary State
+  const [newWord, setNewWord] = useState('');
+  const [dictSearchQuery, setDictSearchQuery] = useState('');
+  const [dictSearchResult, setDictSearchResult] = useState<{ word: string, definition: string } | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [wordStatus, setWordStatus] = useState<'idle' | 'success' | 'error' | 'exists'>('idle');
+  
+  // Edit State for Search Result
+  const [editDef, setEditDef] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Feedback State
   const [replyingId, setReplyingId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
   const [feedbackFilter, setFeedbackFilter] = useState<'all' | 'new' | 'replied' | 'archived'>('all');
@@ -40,94 +56,91 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
         setFeedbacks(data);
         setIsLoading(false);
       });
-    } else if (activeTab === 'dictionary') {
-      setIsLoading(true);
-      fetchAdminCustomWords().then(data => {
-        setCustomWords(data);
-        setIsLoading(false);
-      });
     }
-  }, [activeTab, fetchFeedbacks, fetchAdminCustomWords]);
+  }, [activeTab, fetchFeedbacks]);
 
   const handleAddWord = async () => {
     if (!newWord.trim()) return;
-    const word = newWord.trim().toLowerCase();
-    
-    const dict = getDictionary();
-    if (dict && dict.has(word)) {
-      alert('Это слово уже есть в словаре!');
-      return;
-    }
-
-    const success = await addCustomWord(word);
-    if (success) {
-      dict?.add(word); // Добавляем в текущий кэш, чтобы работало сразу
-      setNewWord('');
-      setWordStatus('success');
-      setTimeout(() => setWordStatus('idle'), 2000);
-      fetchAdminCustomWords().then(setCustomWords); // Обновляем список
-    } else {
-      setWordStatus('error');
+    setWordStatus('idle');
+    try {
+      const res = await addCustomWord(newWord.trim());
+      if (res && res.success) {
+        setNewWord('');
+        setWordStatus('success');
+        showNotification(`Слово "${res.word}" добавлено!`, 'success');
+        
+        // Показываем добавленное слово
+        setDictSearchQuery(res.word);
+        setDictSearchResult({ word: res.word, definition: res.definition });
+        setEditDef(res.definition);
+      } else {
+        setWordStatus(res?.error === 'Exists' ? 'exists' : 'error');
+        showNotification(res?.error === 'Exists' ? 'Слово уже существует' : 'Ошибка добавления', 'error');
+      }
+    } catch (e) {
+      showNotification('Ошибка сети или сервера', 'error');
     }
   };
 
-  const handleDeleteWord = async (id: number, word: string) => {
-    if (window.confirm(`Удалить слово "${word}"?`)) {
-      const success = await deleteCustomWord(id);
-      if (success) {
-        const dict = getDictionary();
-        dict?.delete(word);
-        setCustomWords(prev => prev.filter(w => w.id !== id));
+  const handleDictSearch = async () => {
+    if (!dictSearchQuery.trim()) return;
+    setIsSearching(true);
+    setDictSearchResult(null);
+    setIsEditing(false);
+    
+    try {
+      const result = await onSearchWord(dictSearchQuery.trim());
+      if (result) {
+        setDictSearchResult(result);
+        setEditDef(result.definition || '');
+      } else {
+        setDictSearchResult(null);
+        showNotification('Слово не найдено', 'info');
+      }
+    } catch (e) {
+        showNotification('Ошибка поиска', 'error');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSaveDef = async () => {
+    if (!dictSearchResult) return;
+    try {
+        const success = await updateCustomWord(dictSearchResult.word, editDef);
+        if (success) {
+          setDictSearchResult({ ...dictSearchResult, definition: editDef });
+          setIsEditing(false);
+          showNotification('Определение обновлено!', 'success');
+        } else {
+          showNotification('Ошибка сохранения', 'error');
+        }
+    } catch (e) {
+        showNotification('Ошибка сети', 'error');
+    }
+  };
+
+  const handleDeleteFoundWord = async () => {
+    if (!dictSearchResult) return;
+    if (window.confirm(`Удалить слово "${dictSearchResult.word}" из словаря?`)) {
+      try {
+          const success = await deleteCustomWord(dictSearchResult.word);
+          if (success) {
+            setDictSearchResult(null);
+            setDictSearchQuery('');
+            showNotification('Слово удалено из словаря', 'success');
+          } else {
+            showNotification('Не удалось удалить слово', 'error');
+          }
+      } catch (e) {
+          showNotification('Ошибка сети', 'error');
       }
     }
   };
 
-  const startEdit = (wordObj: any) => {
-    setEditingId(wordObj.id);
-    setEditValue(wordObj.word);
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditValue('');
-  };
-
-  const saveEdit = async (id: number, oldWord: string) => {
-    const trimmed = editValue.trim().toLowerCase();
-    if (!trimmed || trimmed === oldWord) {
-      cancelEdit();
-      return;
-    }
-    
-    const success = await updateCustomWord(id, trimmed);
-    if (success) {
-      const dict = getDictionary();
-      dict?.delete(oldWord);
-      dict?.add(trimmed);
-      setCustomWords(prev => prev.map(w => w.id === id ? { ...w, word: trimmed } : w));
-      cancelEdit();
-    }
-  };
-
-  const handleSearch = () => {
-    if (!searchQuery.trim()) return;
-    const dict = getDictionary();
-    const word = searchQuery.trim().toLowerCase().replace(/ё/g, 'е');
-    if (dict && dict.has(word)) {
-      setSearchResult('found');
-    } else {
-      setSearchResult('not-found');
-    }
-  };
-
-  // Фильтрация списка слов по поисковому запросу
-  const filteredCustomWords = customWords.filter(item => 
-    item.word.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   const filteredFeedbacks = feedbacks.filter(fb => {
     if (feedbackFilter === 'archived') return fb.status === 'archived';
-    if (fb.status === 'archived') return false; // Скрываем архивные из других вкладок
+    if (fb.status === 'archived') return false; 
 
     if (feedbackFilter === 'new') return fb.status !== 'replied';
     if (feedbackFilter === 'replied') return fb.status === 'replied';
@@ -136,27 +149,41 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
 
   const handleSendReply = async (fb: any) => {
     if (!replyText.trim()) return;
-    const success = await onReply(fb.id, fb.telegram_id, replyText);
-    if (success) {
-      setReplyingId(null);
-      setReplyText('');
-      // Обновляем список
-      fetchFeedbacks().then(setFeedbacks);
-    } else {
-      alert('Ошибка отправки ответа');
+    try {
+        const success = await onReply(fb.id, fb.telegram_id, replyText);
+        if (success) {
+          setReplyingId(null);
+          setReplyText('');
+          showNotification('Ответ отправлен пользователю', 'success');
+          fetchFeedbacks().then(setFeedbacks);
+        } else {
+          showNotification('Ошибка отправки ответа', 'error');
+        }
+    } catch (e) {
+        showNotification('Ошибка сети', 'error');
     }
   };
 
   const handleArchive = async (id: number) => {
-    if (await onArchive(id)) {
-      setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, status: 'archived' } : f));
+    try {
+        if (await onArchive(id)) {
+          setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, status: 'archived' } : f));
+          showNotification('Перемещено в архив', 'info');
+        }
+    } catch (e) {
+        showNotification('Ошибка', 'error');
     }
   };
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Удалить отзыв навсегда?')) {
-      if (await onDelete(id)) {
-        setFeedbacks(prev => prev.filter(f => f.id !== id));
+      try {
+          if (await onDelete(id)) {
+            setFeedbacks(prev => prev.filter(f => f.id !== id));
+            showNotification('Отзыв удален', 'success');
+          }
+      } catch (e) {
+          showNotification('Ошибка удаления', 'error');
       }
     }
   };
@@ -164,18 +191,36 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
   const handleBroadcast = async () => {
     if (!broadcastMessage.trim()) return;
     if (window.confirm('Вы уверены, что хотите отправить это сообщение ВСЕМ игрокам?')) {
-      const success = await onBroadcast(broadcastMessage);
-      if (success) {
-        setBroadcastMessage('');
-        alert('Рассылка поставлена в очередь!');
-      } else {
-        alert('Ошибка создания рассылки');
+      try {
+          const success = await onBroadcast(broadcastMessage);
+          if (success) {
+            setBroadcastMessage('');
+            showNotification('Рассылка поставлена в очередь!', 'success');
+          } else {
+            showNotification('Ошибка создания рассылки', 'error');
+          }
+      } catch (e) {
+          showNotification('Ошибка сети', 'error');
       }
     }
   };
 
   return (
-    <div className="admin-container">
+    <div className="admin-container relative">
+      {/* Notification Toast */}
+      {notification && (
+        <div className={`absolute top-4 left-4 right-4 z-50 p-3 rounded-xl shadow-lg border backdrop-blur-md animate-in slide-in-from-top-1 flex items-center gap-3 ${
+            notification.type === 'success' ? 'bg-green-100/90 border-green-200 text-green-800 dark:bg-green-900/90 dark:border-green-800 dark:text-green-100' :
+            notification.type === 'error' ? 'bg-red-100/90 border-red-200 text-red-800 dark:bg-red-900/90 dark:border-red-800 dark:text-red-100' :
+            'bg-blue-100/90 border-blue-200 text-blue-800 dark:bg-blue-900/90 dark:border-blue-800 dark:text-blue-100'
+        }`}>
+            {notification.type === 'success' && <Check size={20} />}
+            {notification.type === 'error' && <AlertCircle size={20} />}
+            {notification.type === 'info' && <Info size={20} />}
+            <span className="font-medium text-sm">{notification.message}</span>
+        </div>
+      )}
+
       <div className="flex flex-col h-full p-4">
         
         {/* Header */}
@@ -265,65 +310,66 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
             </>
           ) : activeTab === 'dictionary' ? (
             <div className="space-y-4">
+              {/* Поиск */}
               <div className="admin-card">
-                <label className="admin-section-label">Поиск и проверка</label>
+                <label className="admin-section-label">Поиск и Редактирование</label>
                 <div className="flex gap-2 mb-2">
                   <input 
-                    value={searchQuery} 
-                    onChange={(e) => { setSearchQuery(e.target.value); setSearchResult(null); }} 
-                    placeholder="Поиск..." 
+                    value={dictSearchQuery} 
+                    onChange={(e) => setDictSearchQuery(e.target.value)} 
+                    placeholder="Введите слово..." 
                     className="flex-1 admin-input-field" 
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    onKeyDown={(e) => e.key === 'Enter' && handleDictSearch()}
                   />
-                  <button onClick={handleSearch} className="p-3 rounded-xl text-white bg-blue-500 hover:bg-blue-600 transition-all">
-                    <Search size={20} />
+                  <button onClick={handleDictSearch} disabled={isSearching} className="p-3 rounded-xl text-white bg-blue-500 hover:bg-blue-600 transition-all">
+                    {isSearching ? <div className="spinner w-5 h-5 border-2 border-white rounded-full animate-spin"></div> : <Search size={20} />}
                   </button>
                 </div>
-                {searchResult === 'found' && (
-                  <div className="text-green-600 dark:text-green-400 text-sm font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-1"><Check size={16} /> Слово есть в базе</div>
-                )}
-                {searchResult === 'not-found' && (
-                  <div className="text-red-500 dark:text-red-400 text-sm font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-1"><X size={16} /> Слово не найдено</div>
+
+                {dictSearchResult ? (
+                  <div className="mt-4 p-3 bg-white/50 dark:bg-black/20 rounded-xl border border-white/10">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-black text-lg capitalize">{dictSearchResult.word}</h3>
+                      <div className="flex gap-2">
+                        {!isEditing && (
+                          <button onClick={() => { setIsEditing(true); setEditDef(dictSearchResult.definition || ''); }} className="p-2 text-indigo-600 bg-white dark:bg-gray-800 rounded-lg shadow-sm"><Edit2 size={16} /></button>
+                        )}
+                        <button onClick={handleDeleteFoundWord} className="p-2 text-red-600 bg-white dark:bg-gray-800 rounded-lg shadow-sm"><Trash2 size={16} /></button>
+                      </div>
+                    </div>
+                    
+                    {isEditing ? (
+                      <div className="flex flex-col gap-2">
+                        <textarea 
+                          value={editDef}
+                          onChange={(e) => setEditDef(e.target.value)}
+                          className="w-full bg-white dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-lg p-2 text-sm outline-none min-h-[80px]"
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={() => setIsEditing(false)} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs font-bold">Отмена</button>
+                          <button onClick={handleSaveDef} className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-bold">Сохранить</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm opacity-80 leading-relaxed">{dictSearchResult.definition || "Нет определения"}</p>
+                    )}
+                  </div>
+                ) : (
+                  dictSearchQuery && !isSearching && <p className="text-center opacity-50 text-xs mt-2">Ничего не найдено</p>
                 )}
               </div>
 
+              {/* Добавление */}
               <div className="admin-card">
-                <label className="admin-section-label">Добавить слово в базу</label>
+                <label className="admin-section-label">Добавить слово</label>
                 <div className="flex gap-2">
-                  <input value={newWord} onChange={(e) => setNewWord(e.target.value)} placeholder="Слово..." className="flex-1 admin-input-field" />
-                  <button onClick={handleAddWord} className={`p-3 rounded-xl text-white transition-all ${wordStatus === 'success' ? 'bg-green-500' : 'bg-indigo-600'}`}>
-                    {wordStatus === 'success' ? <Check size={20} /> : <Send size={20} />}
+                  <input value={newWord} onChange={(e) => setNewWord(e.target.value)} placeholder="Новое слово..." className="flex-1 admin-input-field" />
+                  <button onClick={handleAddWord} className={`p-3 rounded-xl text-white transition-all ${wordStatus === 'success' ? 'bg-green-500' : wordStatus === 'exists' ? 'bg-amber-500' : 'bg-indigo-600'}`}>
+                    {wordStatus === 'success' ? <Check size={20} /> : <Plus size={20} />}
                   </button>
                 </div>
-              </div>
-              
-              <div className="space-y-2 pb-4">
-                {customWords.length === 0 ? (
-                  <p className="text-center opacity-50 text-xs">Нет добавленных слов</p>
-                ) : filteredCustomWords.length === 0 ? (
-                  <p className="text-center opacity-50 text-xs">Ничего не найдено</p>
-                ) : filteredCustomWords.map((item) => (
-                  <div key={item.id} className="bg-white/40 dark:bg-white/5 p-3 rounded-xl border border-white/10 flex items-center justify-between gap-2">
-                    {editingId === item.id ? (
-                      <>
-                        <input 
-                          value={editValue} 
-                          onChange={(e) => setEditValue(e.target.value)}
-                          className="flex-1 bg-white/50 dark:bg-black/20 border border-white/10 rounded-lg px-2 py-1 outline-none text-sm"
-                          autoFocus
-                        />
-                        <button onClick={() => saveEdit(item.id, item.word)} className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg"><Save size={16} /></button>
-                        <button onClick={cancelEdit} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"><X size={16} /></button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="font-bold text-gray-800 dark:text-white flex-1">{item.word}</span>
-                        <button onClick={() => startEdit(item)} className="p-2 text-indigo-600 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg"><Edit2 size={16} /></button>
-                        <button onClick={() => handleDeleteWord(item.id, item.word)} className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg"><Trash2 size={16} /></button>
-                      </>
-                    )}
-                  </div>
-                ))}
+                {wordStatus === 'exists' && <p className="text-xs text-amber-500 font-bold mt-1">Такое слово уже есть!</p>}
+                <p className="text-[10px] opacity-50 mt-1 text-center">Если слово новое, определение сгенерируется автоматически.</p>
               </div>
             </div>
           ) : activeTab === 'broadcast' ? (
@@ -348,7 +394,7 @@ export const AdminPanelModal = ({ onClose, playSfx, fetchFeedbacks, addCustomWor
                 <label className="admin-section-label">Проверка визуального стиля</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button onClick={() => { playSfx('click'); onTestModal('reward') }} className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">🎁 Награда</button>
-                  <button onClick={() => { playSfx('click'); onTestModal('rank_up') }} className="p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">👑 Повышение</button>
+                  <button onClick={() => { playSfx('click'); onTestModal('rank_up') }} className="p-3 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">👑 UI Тест</button>
                 </div>
               </div>
             </div>

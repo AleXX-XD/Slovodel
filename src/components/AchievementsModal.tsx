@@ -1,5 +1,5 @@
 import { X, User, Trophy, Flame, Star, Award, Hash, Calendar, Hourglass, Lightbulb, SquareAsterisk, RefreshCw, Plus } from 'lucide-react';
-import { getLevelProgress, getNextLevelTarget } from '../utils/gameUtils';
+import { getLevelData, getLevelProgress, getNextLevelTarget, getRankMeta } from '../utils/gameUtils';
 import type { RareWord } from './CollectionModal';
 
 interface AchievementsModalProps {
@@ -28,18 +28,8 @@ export const AchievementsModal = ({
   place, daysPlayed, dailyPlaces, coins, isPublicView = false
 }: AchievementsModalProps) => {
 
-  const getRankImage = (r: string) => {
-    if (r.includes("Новичок")) return "./image/face.png";
-    if (r.includes("Книжный")) return "./image/worm.png";
-    if (r.includes("Буквенный")) return "./image/ranger.png";
-    if (r.includes("Словесный")) return "./image/scaut.png";
-    if (r.includes("Адепт")) return "./image/adept.png";
-    if (r.includes("Мастер")) return "./image/master.png";
-    if (r.includes("Магистр")) return "./image/wizard.png";
-    if (r.includes("Живая")) return "./image/book_master.png";
-    if (r.includes("Оракул")) return "./image/oracul.png";
-    return "./image/face.png";
-  };
+  const levelData = getLevelData(totalScore);
+  const currentRankMeta = getRankMeta(levelData.level);
 
   const progress = getLevelProgress(totalScore);
   const nextTarget = getNextLevelTarget(totalScore);
@@ -72,7 +62,7 @@ export const AchievementsModal = ({
             <div className="relative">
               <img src={avatarUrl || './image/book_face.png'} alt="avatar" className="profile-avatar" />
               <div className="profile-rank-badge">
-                <img src={getRankImage(rank)} alt="rank" className="w-6 h-6" />
+                <img src={currentRankMeta.img} alt="rank" className="w-6 h-6" />
               </div>
             </div>
             <div>
@@ -202,16 +192,33 @@ export const AchievementsModal = ({
              <h3 className="profile-label">Редкие слова</h3>
              <div className="grid grid-cols-3 gap-2">
                 <div className="stat-box p-2">
-                   <span className="text-xs font-bold mb-1 text-indigo-500">7-8 букв</span>
+                   <span className="text-xs font-bold mb-1 text-blue-600 dark:text-blue-400">7-8 букв</span>
                    <span className="stat-value-text text-sm tracking-tight leading-none">{rare7_8}</span>
                 </div>
                 <div className="stat-box p-2">
-                   <span className="text-xs font-bold mb-1 text-purple-500">9-10 букв</span>
+                   <span className="text-xs font-bold mb-1 text-purple-600 dark:text-purple-400">9-10 букв</span>
                    <span className="stat-value-text text-sm tracking-tight leading-none">{rare9_10}</span>
                 </div>
                 <div className="stat-box p-2">
-                   <span className="text-xs font-bold mb-1 text-pink-500">11+ букв</span>
+                   <span className="text-xs font-bold mb-1 text-fuchsia-600 dark:text-fuchsia-400">11+ букв</span>
                    <span className="stat-value-text text-sm tracking-tight leading-none">{rare11Plus}</span>
+                </div>
+             </div>
+             
+             {/* Список лучших редких слов (Топ-20) */}
+             <div className="mt-2">
+                <p className="text-[10px] opacity-50 mb-1 pl-1 font-bold uppercase tracking-tight">ТОП-20 находок:</p>
+                <div className="flex flex-wrap gap-1 max-h-[120px] overflow-y-auto scrollbar-hide pb-2">
+                  {rareWords.sort((a, b) => b.score - a.score).slice(0, 20).map((w, i) => (
+                    <div key={i} className={`text-[10px] font-bold uppercase px-2 py-1 rounded border ${
+                      w.length >= 11 ? 'bg-fuchsia-100/50 dark:bg-fuchsia-900/20 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-200 dark:border-fuchsia-800' :
+                      w.length >= 9 ? 'bg-purple-100/50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800' :
+                      'bg-blue-100/50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                    }`}>
+                      {w.text} <span className="opacity-60 text-[9px] font-black">({w.score})</span>
+                    </div>
+                  ))}
+                  {rareWords.length === 0 && <span className="text-xs opacity-40 italic pl-1">Список пуст... пока что!</span>}
                 </div>
              </div>
           </div>

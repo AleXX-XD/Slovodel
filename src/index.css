@@ -1,4 +1,6 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Ваши кастомные стили ниже */
 
@@ -33,11 +35,19 @@
 }
 
 @layer base {
+  html, body {
+    @apply h-full w-full overflow-hidden fixed;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch; /* smooth scrolling inside containers */
+  }
   body {
     @apply m-0 p-0;
-    font-family: 'Rubik', sans-serif; /* Единый шрифт для всех устройств */
-    -webkit-font-smoothing: antialiased; /* Убирает "размытость" шрифтов на iOS */
+    font-family: 'Rubik', sans-serif;
+    -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  #root {
+    @apply h-full w-full overflow-hidden;
   }
 }
 
@@ -79,7 +89,7 @@
   animation-name: slideInFromTop;
 }
 
-@layer base {
+@layer utilities {
 
   /* Специальный класс для градиентного текста, работающий в Safari/iOS */
   .text-gradient-custom {
@@ -104,14 +114,16 @@
 
   /* Главный контейнер приложения */
   .app-wrapper {
-    @apply h-full h-[100dvh] w-full max-w-md mx-auto flex flex-col relative overflow-hidden shadow-2xl transition-colors duration-300;
-    @apply bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-200 via-purple-200 to-pink-200;
-    @apply text-gray-700 selection:bg-pink-500/30;
+    @apply h-full h-[100dvh] w-full max-w-md mx-auto flex flex-col relative overflow-hidden shadow-md transition-colors duration-300;
+    /* Светлый серый градиент для фона (обновлен на 100-200) */
+    @apply bg-gradient-to-br from-gray-100 to-gray-200;
+    @apply text-gray-700 selection:bg-gray-300;
     font-family: 'Rubik', sans-serif;
   }
 
   .dark .app-wrapper {
     @apply bg-slate-900 bg-none text-white;
+    background-image: none;
   }
 
   /* Карточки статистики */
@@ -124,17 +136,17 @@
   }
 
   .player-card {
-    @apply bg-white/60 backdrop-blur-md inline-flex flex-col justify-center items-center px-6 py-2 rounded-full shadow-lg border border-white/40 text-center;
+    @apply bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-md inline-flex flex-col justify-center items-center px-6 py-2 rounded-full shadow-sm border border-white/60 text-center;
   }
   .dark .player-card {
-    @apply bg-white/10 border-white/10;
+    @apply bg-white/10 border-white/10 bg-none;
   }
 
   .coin-card {
-    @apply bg-white/60 backdrop-blur-md inline-flex flex-row justify-center items-center px-6 py-3 rounded-full shadow-lg border border-white/40 text-center gap-2 active:scale-95 transition-transform min-w-[120px];
+    @apply bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-md inline-flex flex-row justify-center items-center px-6 py-3 rounded-full shadow-sm border border-white/60 text-center gap-2 active:scale-95 transition-transform min-w-[120px];
   }
   .dark .coin-card {
-    @apply bg-white/10 border-white/10;
+    @apply bg-white/10 border-white/10 bg-none;
   }
 
   .coin-value {
@@ -145,10 +157,10 @@
   }
 
   .stat-card {
-    @apply bg-white/60 backdrop-blur-md p-3 rounded-2xl shadow-lg border border-white/40 text-center;
+    @apply bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-md p-3 rounded-2xl shadow-sm border border-white/60 text-center;
   }
   .dark .stat-card {
-    @apply bg-white/10 border-white/10;
+    @apply bg-white/10 border-white/10 bg-none;
   }
   .stat-label {
     @apply text-[10px] opacity-60 font-bold text-indigo-800;
@@ -164,7 +176,7 @@
   }
 
   .game-day {
-    @apply bg-gradient-to-r from-amber-400/80 to-orange-500/80 backdrop-blur-md text-white border-white/20 shadow-lg hover:shadow-amber-500/30 active:scale-[0.98];
+    @apply bg-gradient-to-r from-amber-400/80 to-orange-500/80 backdrop-blur-md text-white border-white/20 shadow-sm hover:shadow-amber-500/30 active:scale-[0.98];
   }
 
   .game-day-end {
@@ -176,42 +188,87 @@
   }
 
   .game_easy {
-    @apply text-green-600 w-full py-4 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-green-500/20 active:scale-[0.98] transition-all uppercase text-sm hover:bg-green-500/10;
+    /* Градиент зеленый */
+    @apply text-green-700 w-full py-4 bg-gradient-to-b from-green-50 to-green-100 backdrop-blur-sm rounded-2xl shadow-[0_2px_3px_rgba(0,0,0,0.1)] border border-green-500/20 active:scale-[0.98] transition-all uppercase text-sm hover:from-green-100 hover:to-green-200;
   }
   
   .dark .game_easy {
-    @apply bg-white/10 text-green-500 border-green-400/30 hover:bg-green-400/20;
+    @apply bg-white/10 text-green-500 border-green-400/30 hover:bg-green-400/20 bg-none;
   } 
 
     .game_medium {
-    @apply text-blue-600 w-full py-4 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-blue-500/20 active:scale-[0.98] transition-all uppercase text-sm hover:bg-blue-500/10;
+    /* Градиент синий */
+    @apply text-blue-700 w-full py-4 bg-gradient-to-b from-blue-50 to-blue-100 backdrop-blur-sm rounded-2xl shadow-[0_2px_3px_rgba(0,0,0,0.1)] border border-blue-500/20 active:scale-[0.98] transition-all uppercase text-sm hover:from-blue-100 hover:to-blue-200;
   }
   
   .dark .game_medium {
-    @apply bg-white/10 text-blue-500 border-blue-400/30 hover:bg-blue-400/20;
+    @apply bg-white/10 text-blue-500 border-blue-400/30 hover:bg-blue-400/20 bg-none;
   } 
 
   .game_hard {
-    @apply text-red-600 w-full py-4 bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-red-500/20 active:scale-[0.98] transition-all uppercase text-sm hover:bg-red-500/10;
+    /* Градиент красный */
+    @apply text-red-700 w-full py-4 bg-gradient-to-b from-red-50 to-red-100 backdrop-blur-sm rounded-2xl shadow-[0_2px_3px_rgba(0,0,0,0.1)] border border-red-500/20 active:scale-[0.98] transition-all uppercase text-sm hover:from-red-100 hover:to-red-200;
   }
   
   .dark .game_hard {
-    @apply bg-white/10 text-red-500 border-red-400/30 hover:bg-red-400/20;
+    @apply bg-white/10 text-red-500 border-red-400/30 hover:bg-red-400/20 bg-none;
   } 
+
+  .game_marathon {
+    @apply text-violet-700 w-full py-4 bg-gradient-to-b from-fuchsia-50 to-fuchsia-100 backdrop-blur-sm rounded-2xl shadow-[0_2px_3px_rgba(0,0,0,0.1)] border border-fuchsia-500/20 active:scale-[0.98] transition-all uppercase text-sm hover:brightness-110 shadow-violet-500/20;
+  }
+  
+  .dark .game_marathon {
+    @apply bg-white/10 text-violet-500 border-violet-400/30 hover:bg-violet-400/20 bg-none;
+  }
+
+  .marathon-warning {
+    animation: marathon-pulse 1s infinite;
+    z-index: 10;
+  }
+
+  .dark .marathon-warning {
+    animation: marathon-pulse-dark 1s infinite;
+  }
+
+  @keyframes marathon-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); border-color: rgba(239, 68, 68, 1); transform: scale(1); background-color: rgba(239, 68, 68, 0.1); }
+    50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); border-color: rgba(239, 68, 68, 0.5); transform: scale(1.05); background-color: rgba(239, 68, 68, 0.3); }
+  }
+
+  @keyframes marathon-pulse-dark {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7); border-color: rgba(250, 204, 21, 1); transform: scale(1); background-color: rgba(250, 204, 21, 0.1); }
+    50% { box-shadow: 0 0 0 4px rgba(250, 204, 21, 0); border-color: rgba(250, 204, 21, 0.5); transform: scale(1.05); background-color: rgba(250, 204, 21, 0.3); }
+  }
 
   /* Кнопка с буквой (всегда светлая с черным текстом) */
   .letter-btn {
-    @apply rounded-2xl font-bold text-4xl flex items-center justify-center transition-all active:scale-95 shadow-lg backdrop-blur-sm border-2 border-black/20;
-    @apply bg-white/60 text-gray-700;
+    @apply rounded-2xl font-bold text-4xl flex items-center justify-center transition-all active:scale-95 shadow-[0_2px_0_rgba(0,0,0,0.15)] backdrop-blur-sm border-2 border-black/20;
+    @apply bg-gradient-to-b from-white/95 to-white/60 text-gray-700;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .dark .letter-btn {
-    @apply border-0;
+    @apply border-0 bg-white/60; /* В темной теме чуть проще */
   }
 
   /* Активная/подсвеченная буква */
   .letter-btn-hint {
-    @apply bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)] border-amber-500;
+    @apply bg-amber-500 text-white shadow-[0_0_10px_rgba(245,158,11,0.3)] border-amber-500 bg-none;
+  }
+  .dark .letter-btn-hint {
+    @apply bg-amber-500 text-white !important;
+  }
+
+  /* Активная буква (используется 2+ раза в слове) */
+  .letter-btn-hint-multi {
+    @apply bg-amber-700 text-white shadow-[0_0_10px_rgba(180,83,9,0.5)] border-amber-700 bg-none;
+  }
+  .dark .letter-btn-hint-multi {
+    @apply bg-amber-700 text-white !important;
   }
 
 
@@ -229,14 +286,14 @@
   }
 
   .modal-content {
-    @apply bg-white/80 backdrop-blur-2xl rounded-3xl p-4 w-[95%] max-w-md text-center shadow-2xl border border-white/40;
+    @apply bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-3xl p-4 w-[95%] max-w-md text-center shadow-md border border-white/60;
     @apply text-gray-900;
     @apply max-h-[85vh] flex flex-col; /* Ограничение высоты и флекс для скролла */
     animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
   
   .dark .modal-content {
-    @apply bg-slate-900/85 text-white border-white/10;
+    @apply bg-slate-900/85 text-white border-white/10 bg-none;
   }
 
   .modal-title {
@@ -245,25 +302,25 @@
 
   /* Строка настройки в меню */
   .settings-row {
-    @apply flex items-center justify-between p-4 rounded-2xl border transition-all shadow-sm bg-white/60 backdrop-blur-md border-white/40;
+    @apply flex items-center justify-between p-4 rounded-2xl border transition-all shadow-sm bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-md border-white/60;
   }
   .dark .settings-row {
-    @apply bg-white/10 border-white/10;
+    @apply bg-white/10 border-white/10 bg-none;
   }
 
   /* Кнопки действий в настройках (стиль как на главной) */
   .btn-action-indigo {
-    @apply w-full py-4 bg-indigo-500/10 text-indigo-600 font-bold rounded-2xl border border-indigo-500/20 active:scale-95 transition-all uppercase text-sm hover:bg-indigo-500/20 flex items-center justify-center gap-2;
+    @apply w-full py-4 bg-gradient-to-b from-indigo-50 to-indigo-100 text-indigo-700 font-bold rounded-2xl border border-indigo-500/20 active:scale-95 transition-all uppercase text-sm hover:from-indigo-100 hover:to-indigo-200 flex items-center justify-center gap-2 shadow-sm;
   }
   .dark .btn-action-indigo {
-    @apply bg-white/10 text-indigo-400 border-indigo-400/30 hover:bg-indigo-400/20;
+    @apply bg-white/10 text-indigo-400 border-indigo-400/30 hover:bg-indigo-400/20 bg-none;
   }
 
   .btn-action-red {
-    @apply w-full py-4 bg-red-500/10 text-red-600 font-bold rounded-2xl border border-red-500/20 active:scale-95 transition-all uppercase text-sm hover:bg-red-500/20;
+    @apply w-full py-4 bg-gradient-to-b from-red-50 to-red-100 text-red-700 font-bold rounded-2xl border border-red-500/20 active:scale-95 transition-all uppercase text-sm hover:from-red-100 hover:to-red-200 shadow-sm;
   }
   .dark .btn-action-red {
-    @apply bg-white/10 text-red-400 border-red-400/30 hover:bg-red-400/20;
+    @apply bg-white/10 text-red-400 border-red-400/30 hover:bg-red-400/20 bg-none;
   }
 
   /* --- Стили для модального окна "Помощь" --- */
@@ -278,10 +335,10 @@
   }
 
   .about-block {
-    @apply bg-white/60 backdrop-blur-md p-4 rounded-2xl border border-white/40 shadow-sm text-left;
+    @apply bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-md p-4 rounded-2xl border border-white/60 shadow-sm text-left;
   }
   .dark .about-block {
-    @apply bg-white/10 border-white/10;
+    @apply bg-white/10 border-white/10 bg-none;
   }
 
   .about-block-title {
@@ -293,18 +350,18 @@
 
   .hint-item {
     @apply flex items-center gap-3 p-3 rounded-xl border transition-all shadow-sm mb-2;
-    @apply bg-white/50 backdrop-blur-sm border-white/30;
+    @apply bg-gradient-to-b from-white/80 to-white/40 backdrop-blur-sm border-white/50;
   }
   .dark .hint-item {
-    @apply bg-white/5 border-white/10;
+    @apply bg-white/5 border-white/10 bg-none;
   }
 
   .rank-item {
     @apply flex items-center justify-between gap-3 p-2 rounded-xl border transition-all shadow-sm mb-2;
-    @apply bg-white/50 backdrop-blur-sm border-white/30;
+    @apply bg-gradient-to-b from-white/80 to-white/40 backdrop-blur-sm border-white/50;
   }
   .dark .rank-item {
-    @apply bg-white/5 border-white/10;
+    @apply bg-white/5 border-white/10 bg-none;
   }
 
   .bonus-count-badge {
@@ -417,17 +474,17 @@
   /* Стили для коллекции */
   .collection-item {
     @apply flex justify-between items-center p-3 rounded-xl border transition-all shadow-sm mb-2;
-    @apply bg-white/50 backdrop-blur-sm border-white/30;
+    @apply bg-gradient-to-b from-white/80 to-white/40 backdrop-blur-sm border-white/50;
   }
   .dark .collection-item {
-    @apply bg-white/5 border-white/10;
+    @apply bg-white/5 border-white/10 bg-none;
   }
 
   .collection-word {
-    @apply text-lg font-bold uppercase tracking-wider leading-none text-indigo-600;
+    @apply text-lg font-bold uppercase tracking-wider leading-none;
   }
   .dark .collection-word {
-    @apply text-indigo-300;
+    @apply text-white; /* Fallback for unspecified lengths if needed, but Tailwind classes should override this */
   }
 
   .collection-meta {
@@ -449,11 +506,11 @@
 
   /* Стили для профиля */
   .profile-avatar {
-    @apply w-24 h-24 rounded-full border-4 border-white/20 shadow-xl;
+    @apply w-24 h-24 rounded-full border-4 border-white/20 shadow-sm;
   }
   
   .profile-rank-badge {
-    @apply absolute -bottom-2 -right-2 bg-white p-2 rounded-full shadow-lg border border-white/10;
+    @apply absolute -bottom-2 -right-2 bg-white p-2 rounded-full shadow-sm border border-white/10;
   }
   .dark .profile-rank-badge {
     @apply bg-slate-800;
@@ -466,10 +523,10 @@
   .dark .profile-rank { @apply text-indigo-300; }
 
   .profile-block {
-    @apply bg-white/60 backdrop-blur-md p-4 rounded-2xl border border-white/40 shadow-sm;
+    @apply bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-md p-4 rounded-2xl border border-white/60 shadow-sm;
   }
   .dark .profile-block {
-    @apply bg-white/10 border-white/10;
+    @apply bg-white/10 border-white/10 bg-none;
   }
 
   .level-progress-bg {
@@ -480,17 +537,17 @@
   }
 
   .bonus-card {
-    @apply bg-white/60 backdrop-blur-sm p-2 rounded-xl flex flex-col items-center justify-center border border-white/40 shadow-sm;
+    @apply bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-sm p-2 rounded-xl flex flex-col items-center justify-center border border-white/60 shadow-sm;
   }
   .dark .bonus-card {
-    @apply bg-white/10 border-white/10;
+    @apply bg-white/10 border-white/10 bg-none;
   }
 
   .stat-box {
-    @apply p-2 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/40 flex flex-col items-center text-center shadow-sm;
+    @apply p-2 bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-sm rounded-2xl border border-white/60 flex flex-col items-center text-center shadow-sm;
   }
   .dark .stat-box {
-    @apply bg-white/10 border-white/10;
+    @apply bg-white/10 border-white/10 bg-none;
   }
 
   .profile-label { @apply text-xs font-bold uppercase mb-2 opacity-70 text-gray-800; }
@@ -504,7 +561,7 @@
 
   /* Стили для окна награды (RewardModal) */
   .reward-modal-content {
-    @apply w-full max-w-md rounded-3xl p-8 text-center shadow-2xl relative overflow-hidden;
+    @apply w-full max-w-md rounded-3xl p-8 text-center shadow-md relative overflow-hidden;
     @apply bg-white border border-gray-100 text-gray-900;
     animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
@@ -596,10 +653,10 @@
 
   .leaderboard-card {
     @apply flex items-center gap-2 p-1 rounded-xl border transition-all shadow-sm;
-    @apply bg-white/50 backdrop-blur-sm border-white/30;
+    @apply bg-gradient-to-b from-white/80 to-white/40 backdrop-blur-sm border-white/50;
   }
   .dark .leaderboard-card {
-    @apply bg-white/5 border-white/10;
+    @apply bg-white/5 border-white/10 bg-none;
   }
 
   .leaderboard-card-active {
@@ -638,7 +695,7 @@
   }
 
   .leaderboard-close {
-    @apply w-full py-3 bg-white/60 backdrop-blur-md text-indigo-700 font-bold rounded-2xl border border-white/40 active:scale-95 shadow-lg hover:bg-white/80 uppercase text-sm;
+    @apply w-full py-3 bg-white/60 backdrop-blur-md text-indigo-700 font-bold rounded-2xl border border-white/40 active:scale-95 shadow-sm hover:bg-white/80 uppercase text-sm;
   }
 
   .dark .leaderboard-close {
@@ -660,7 +717,7 @@
   }
 
   .reward-button {
-    @apply w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-all uppercase tracking-wider;
+    @apply w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-2xl shadow-sm active:scale-95 transition-all uppercase tracking-wider;
   }
 
    /* --- Дневное испытание--- */
@@ -755,19 +812,19 @@
 
   /* --- Игровой экран --- */
   .game-header-btn {
-    @apply p-3 bg-white/60 backdrop-blur-md rounded-xl border border-white/40 active:scale-95 shadow-lg transition-all;
+    @apply p-3 bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-md rounded-xl border border-white/60 active:scale-95 shadow-[0_2px_3px_rgba(0,0,0,0.1)] transition-all;
   }
 
   .dark .game-header-btn {
-    @apply p-3 bg-white/10 border-white/10;
+    @apply p-3 bg-white/10 border-white/10 bg-none;
   }
   
   .game-panel {
-    @apply mt-auto w-full bg-white/60 backdrop-blur-xl p-4 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-30 border-t border-white/40 shrink-0;
+    @apply mt-auto w-full bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-xl p-4 rounded-t-[2.5rem] shadow-md z-30 border-t border-white/60 shrink-0;
   }
 
   .dark .game-panel {
-    @apply bg-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.3)] border-white/10;
+    @apply bg-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.3)] border-white/10 bg-none;
   }
 
   /* Логотип-маска для SVG */
@@ -852,7 +909,7 @@
   }
 
   .hint-box {
-    @apply bg-amber-500/10 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-amber-500/20;
+    @apply bg-amber-500/10 backdrop-blur-md p-4 rounded-2xl shadow-sm border border-amber-500/20;
     animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
   .dark .hint-box {
@@ -881,11 +938,11 @@
   }
 
   .found-word-item {
-    @apply bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-lg font-bold text-sm text-indigo-700 shadow-sm border border-white/40 flex items-center gap-2;
+    @apply bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-sm px-3 py-1.5 rounded-lg font-bold text-sm text-indigo-700 shadow-sm border border-white/60 flex items-center gap-2;
     animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
   .dark .found-word-item {
-    @apply bg-white/10 text-white border-white/10;
+    @apply bg-white/10 text-white border-white/10 bg-none;
   }
 
   .found-word-score {
@@ -896,10 +953,10 @@
   }
 
   .bonus-btn-container {
-    @apply w-14 h-14 bg-gray-200 rounded-2xl flex items-center justify-center border-2 border-white/50 shadow-xl;
+    @apply w-14 h-14 bg-gradient-to-b from-gray-50 to-gray-200 rounded-2xl flex items-center justify-center border-2 border-white/50 shadow-[0_2px_3px_rgba(0,0,0,0.1)];
   }
   .dark .bonus-btn-container {
-    @apply bg-gray-700;
+    @apply bg-gray-700 bg-none;
   }
 
   .bonus-badge-normal {
@@ -910,7 +967,7 @@
   }
 
   .input-field-container {
-    @apply h-16 mb-4 bg-gray-100/50 rounded-2xl flex items-center justify-center relative px-12 shadow-inner border border-gray-200;
+    @apply h-16 mb-4 bg-gray-100/50 rounded-2xl flex items-center justify-center relative pl-4 pr-12 shadow-inner border border-gray-200;
   }
   .dark .input-field-container {
     @apply bg-black/20 border-white/5;
@@ -924,7 +981,7 @@
   }
 
   .input-text {
-    @apply text-3xl font-bold text-indigo-600 uppercase overflow-hidden whitespace-nowrap drop-shadow-md w-full;
+    @apply block text-3xl font-bold text-indigo-600 uppercase whitespace-nowrap drop-shadow-md w-full overflow-hidden;
   }
   .dark .input-text {
     @apply text-white;
@@ -968,14 +1025,14 @@
   }
     
   .round-end-record {
-    @apply bg-amber-500/20 backdrop-blur-md text-amber-700  px-6 py-2 rounded-full border border-amber-500/30 shadow-lg;
+    @apply bg-amber-500/20 backdrop-blur-md text-amber-700  px-6 py-2 rounded-full border border-amber-500/30 shadow-sm;
   }
   .dark .round-end-record {
     @apply text-amber-200;
   }
      
   .round-end-bg{
-    @apply w-full bg-white/60 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white/40 mb-8;
+    @apply w-full bg-white/60 backdrop-blur-md rounded-3xl p-6 shadow-sm border border-white/40 mb-8;
   }
   .dark .round-end-bg {
     @apply bg-white/10 border-white/20;
@@ -996,7 +1053,7 @@
   }
 
   .round-end-progress-scale{
-    @apply h-full bg-fuchsia-600 transition-all duration-1000 shadow-[0_0_10px_rgba(167,139,250,0.5)];
+    @apply h-full bg-gradient-to-r from-violet-600 to-fuchsia-600 transition-all duration-1000 shadow-[0_0_10px_rgba(167,139,250,0.5)];
   }
   .dark .round-end-progress-scale {
     @apply bg-fuchsia-500;
@@ -1025,7 +1082,7 @@
   }
 
   .rank-modal-content {
-    @apply bg-white w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl border border-white/20 relative overflow-hidden;
+    @apply bg-white w-full max-w-sm rounded-3xl p-8 text-center shadow-md border border-white/20 relative overflow-hidden;
   }
   .dark .rank-modal-content {
     @apply bg-slate-900 border-white/10;
@@ -1065,7 +1122,7 @@
   }
 
   .rank-modal-button {
-    @apply w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-all uppercase tracking-wider;
+    @apply w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-2xl shadow-sm active:scale-95 transition-all uppercase tracking-wider;
   }
 
   /* --- Стили для игрового экрана (GameScreen) --- */
@@ -1086,14 +1143,14 @@
   }
 
   .btn-control-mix {
-    @apply flex-1 py-4 bg-gradient-to-b from-blue-400 to-blue-600 text-white font-bold rounded-2xl active:scale-95 transition-all uppercase text-lg tracking-widest shadow-lg;
+    @apply flex-1 py-4 bg-gradient-to-b from-blue-400 to-blue-600 text-white font-bold rounded-2xl active:scale-95 transition-all uppercase text-lg tracking-widest shadow-[0_3px_0_rgba(0,0,0,0.15)];
   }
   .dark .btn-control-mix {
     @apply from-blue-600 to-blue-800 shadow-blue-900/20;
   }
 
   .btn-control-enter {
-    @apply flex-[2] py-4 font-bold rounded-2xl transition-all uppercase text-lg tracking-widest shadow-lg;
+    @apply flex-[2] py-4 font-bold rounded-2xl transition-all uppercase text-lg tracking-widest shadow-[0_3px_0_rgba(0,0,0,0.15)];
   }
 
   .btn-control-enter-active {
@@ -1161,10 +1218,10 @@
   }
 
   .shop-item-card {
-    @apply bg-white/60 p-2 rounded-2xl border border-white/40 flex items-center justify-between;
+    @apply bg-gradient-to-b from-white/90 to-white/50 p-2 rounded-2xl border border-white/60 flex items-center justify-between;
   }
   .dark .shop-item-card {
-    @apply bg-white/10 border-white/10;
+    @apply bg-white/10 border-white/10 bg-none;
   }
 
   .shop-item-icon-bg {
@@ -1226,7 +1283,7 @@
   
 
   .coin-pack-card {
-    @apply bg-gradient-to-r from-indigo-500 to-purple-600 p-4 rounded-2xl text-white flex items-center justify-between shadow-lg relative overflow-hidden;
+    @apply bg-gradient-to-r from-indigo-500 to-purple-600 p-4 rounded-2xl text-white flex items-center justify-between shadow-sm relative overflow-hidden;
   }
 
   .coin-pack-amount {
@@ -1246,7 +1303,7 @@
   }
 
   .shop-footer-btn {
-    @apply w-full py-4 rounded-2xl font-bold text-lg uppercase tracking-widest shadow-lg transition-all flex items-center justify-center gap-2;
+    @apply w-full py-4 rounded-2xl font-bold text-lg uppercase tracking-widest shadow-sm transition-all flex items-center justify-center gap-2;
   }
   .shop-footer-btn-disabled {
     @apply bg-gray-300 text-gray-500 cursor-not-allowed;
@@ -1262,7 +1319,7 @@
 
   /* MainMenu */
   .stat-badge-fire {
-    @apply px-2 py-2 rounded-2xl font-bold flex items-center gap-2 shadow-lg bg-white/60 backdrop-blur-md border border-white/40 text-center;
+    @apply px-2 py-2 rounded-2xl font-bold flex items-center gap-2 shadow-sm bg-white/60 backdrop-blur-md border border-white/40 text-center hover:scale-105 active:scale-95 transition-transform cursor-pointer;
   }
   .dark .stat-badge-fire {
     @apply bg-white/10 border-white/10;
@@ -1286,7 +1343,7 @@
   }
 
   .stat-card-icon {
-    @apply bg-white/60 backdrop-blur-md p-3 rounded-2xl shadow-lg border border-white/40 text-center active:scale-95 transition-transform;
+    @apply bg-white/60 backdrop-blur-md p-3 rounded-2xl shadow-sm border border-white/40 text-center active:scale-95 transition-transform;
   }
   .dark .stat-card-icon {
     @apply bg-white/10 border-white/10;
@@ -1322,11 +1379,11 @@
   }
   
   .found-word-tag {
-    @apply bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-lg font-bold text-sm text-indigo-700 shadow-sm border border-white/40 flex items-center gap-2;
+    @apply bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-sm px-3 py-1.5 rounded-lg font-bold text-sm text-indigo-700 shadow-sm border border-white/60 flex items-center gap-2;
     animation: pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
   .dark .found-word-tag {
-    @apply bg-white/10 text-white border-white/10;
+    @apply bg-white/10 text-white border-white/10 bg-none;
   }
   
   .found-word-tag-rare {
@@ -1416,7 +1473,7 @@
   .dark .stat-box-bronze { @apply bg-orange-900/20 border-orange-700/30; }
   
   .profile-btn-primary {
-    @apply w-full py-3 bg-violet-600 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all uppercase text-sm flex items-center justify-center gap-2;
+    @apply w-full py-3 bg-violet-600 text-white font-bold rounded-xl shadow-sm active:scale-95 transition-all uppercase text-sm flex items-center justify-center gap-2;
   }
 
   /* Leaderboard */
@@ -1440,10 +1497,10 @@
 
   /* Shop */
   .shop-item-card-col {
-    @apply bg-white/60 p-2 rounded-2xl border border-white/40 flex items-center justify-between !flex-col !items-stretch !h-auto gap-3;
+    @apply bg-gradient-to-b from-white/90 to-white/50 p-2 rounded-2xl border border-white/60 flex items-center justify-between !flex-col !items-stretch !h-auto gap-3;
   }
   .dark .shop-item-card-col {
-    @apply bg-white/10 border-white/10;
+    @apply bg-white/10 border-white/10 bg-none;
   }
 
   /* Admin Panel */
@@ -1563,4 +1620,105 @@
     }
   }
 
+  /* ========================================= */
+  /* НОВЫЕ СТИЛИ ДЛЯ ПРОФИЛЯ В ГЛАВНОМ МЕНЮ */
+  /* ========================================= */
+  
+  .main-menu-profile-container {
+    @apply flex gap-3 mb-4 w-full px-2 h-[72px]; /* Фиксированная высота 72px */
+  }
+
+  .main-menu-profile-card {
+    @apply flex-1 bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-md p-2 rounded-2xl shadow-sm border border-white/60 relative overflow-hidden active:scale-[0.98] transition-all;
+    @apply flex flex-row items-center gap-3; /* Горизонтальное выравнивание */
+  }
+  .dark .main-menu-profile-card {
+    @apply bg-white/10 border-white/10 bg-none;
+  }
+
+  .main-menu-profile-name {
+    @apply font-bold text-sm truncate text-gray-900 leading-tight mb-0.5;
+  }
+  .dark .main-menu-profile-name {
+    @apply text-white;
+  }
+
+  .main-menu-profile-rank {
+    @apply text-[10px] font-bold uppercase tracking-tighter text-indigo-500 mb-1 leading-tight;
+  }
+  .dark .main-menu-profile-rank {
+    @apply text-indigo-300;
+  }
+
+  .main-menu-progress-bg {
+    @apply h-1.5 w-full bg-gray-200/80 rounded-full overflow-hidden;
+  }
+  .dark .main-menu-progress-bg {
+    @apply bg-white/10;
+  }
+
+  .main-menu-coin-btn {
+    @apply h-full aspect-square flex flex-col items-center justify-center p-1 rounded-2xl bg-gradient-to-b from-white/90 to-white/50 backdrop-blur-md border border-white/60 shadow-sm active:scale-95 transition-all shrink-0;
+  }
+  .dark .main-menu-coin-btn {
+    @apply bg-white/10 border-white/10 bg-none;
+  }
+
+  /* --- Streak Modal --- */
+  .streak-stat-box {
+    @apply bg-orange-50 p-4 rounded-xl mb-4 border border-orange-100;
+  }
+  .dark .streak-stat-box {
+    @apply bg-orange-900/20 border-orange-800;
+  }
+  
+  .streak-list-item {
+    @apply flex gap-3 text-left;
+  }
+  
+  .streak-btn {
+    @apply w-full mt-6 py-3 bg-indigo-600 text-white font-bold rounded-xl active:scale-95 transition-transform shadow-lg shadow-indigo-200 uppercase tracking-wider text-sm;
+  }
+  .dark .streak-btn {
+    @apply shadow-none;
+  }
+
+  /* --- Achievements Modal --- */
+  .achievements-tabs-container {
+    @apply flex p-1 bg-slate-100 rounded-xl mb-4 shrink-0 mx-4 mt-2;
+  }
+  .dark .achievements-tabs-container {
+    @apply bg-slate-800;
+  }
+
+  .achievements-tab-btn {
+    @apply flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-bold transition-all;
+  }
+  
+  .achievements-tab-active {
+    @apply bg-white shadow text-indigo-600;
+  }
+  .dark .achievements-tab-active {
+    @apply bg-slate-700 text-white;
+  }
+
+  .achievements-tab-inactive {
+    @apply text-gray-500 hover:text-gray-700;
+  }
+  .dark .achievements-tab-inactive {
+    @apply text-gray-400;
+  }
+
+  .achievements-empty-state {
+    @apply flex flex-col items-center justify-center h-full text-center opacity-60 px-6 pb-12;
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

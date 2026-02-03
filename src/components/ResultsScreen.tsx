@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getUserRank } from '../utils/gameUtils';
+import { getUserRank, getLevelProgress, getLevelData, getRankMeta } from '../utils/gameUtils';
 
 interface ResultsScreenProps {
   score: number;
@@ -14,16 +14,9 @@ interface ResultsScreenProps {
 export const ResultsScreen = ({ score, lastRoundRecordBeaten, totalScore, userName, onMenu, newRankReached, onRankModalClose }: ResultsScreenProps) => {
   const [showRankModal, setShowRankModal] = useState(!!newRankReached);
 
-  const getProgress = (s: number) => {
-    if (s < 2000) return (s / 2000) * 100;
-    if (s < 5000) return ((s - 2000) / 3000) * 100;
-    if (s < 10000) return ((s - 5000) / 5000) * 100;
-    if (s < 50000) return ((s - 10000) / 40000) * 100;
-    if (s < 100000) return ((s - 50000) / 50000) * 100;
-    if (s < 200000) return ((s - 100000) / 100000) * 100;
-    if (s < 500000) return ((s - 200000) / 300000) * 100;
-    return 100;
-  };
+  const levelData = getLevelData(totalScore);
+  const currentRankMeta = getRankMeta(levelData.level);
+  const isNewTitle = currentRankMeta.minLevel === levelData.level;
 
   return (
     <div className="h-full w-full max-w-md mx-auto p-6 flex flex-col items-center justify-center animate-pop relative">
@@ -32,11 +25,15 @@ export const ResultsScreen = ({ score, lastRoundRecordBeaten, totalScore, userNa
         <div className="rank-modal-overlay">
           <div className="rank-modal-content">
             <div className="rank-modal-gradient-bar"></div>
-            <img src="./image/crown.png" alt="Rank Up" className="rank-modal-icon" />
+            <div className="w-24 h-24 mx-auto mb-4 bg-indigo-50 dark:bg-slate-800 rounded-full flex items-center justify-center p-2 shadow-inner">
+               <img src={currentRankMeta.img} alt="Rank Up" className="w-full h-full object-contain animate-bounce-slow" />
+            </div>
             <h2 className="rank-modal-title">Повышение!</h2>
-            <p className="rank-modal-subtitle">Твои знания растут! Новое звание:</p>
+            <p className="rank-modal-subtitle">Твои знания растут! Новый уровень:</p>
             <div className="rank-modal-box">
               <p className="rank-modal-rank-name">{newRankReached}</p>
+              {isNewTitle && <div className="mt-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 px-3 py-1 rounded-lg text-xs font-bold uppercase animate-pulse">👑 Новое звание!</div>}
+              <p className="text-sm font-normal opacity-70 mt-1">Звание: {currentRankMeta.name}</p>
             </div>
             <button 
               onClick={() => { setShowRankModal(false); onRankModalClose(); }}
@@ -65,7 +62,7 @@ export const ResultsScreen = ({ score, lastRoundRecordBeaten, totalScore, userNa
       <div className="round-end-bg">
         <div className="round-end-progress">Ваш прогресс</div>
         <div className="round-end-progress-rank">
-          <div className="round-end-progress-scale" style={{ width: `${Math.min(100, getProgress(totalScore))}%` }}></div>
+          <div className="round-end-progress-scale" style={{ width: `${Math.min(100, getLevelProgress(totalScore))}%` }}></div>
         </div>
         <div className="flex justify-between items-end">
             <p className="round-end-name">{userName}</p>

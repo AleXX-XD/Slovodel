@@ -2,425 +2,91 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App'; 
-// Используем установленный пакет вместо URL
-import { createClient } from '@supabase/supabase-js';
-import { getDailyDateString } from './utils/gameUtils';
+import { apiClient } from './utils/apiClient'; // <-- ИЗМЕНЕНО: Новый клиент
 
-// Инициализация Supabase
-// Используем переменные окружения для безопасности
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// Добавляем проверку на существование Telegram, чтобы не падало на ПК
 const tg = window.Telegram?.WebApp;
 
-// Функция для сохранения данных пользователя (очки + бонусы)
-const saveUserData = async (data: {
-  telegramId?: number;
-  username: string;
-  score: number;
-  bonuses: { time: number; hint: number; swap: number; wildcard: number };
-  avatarUrl?: string;
-  rareWords: any[];
-  totalWords: number;
-  highScore: number;
-  daysPlayed: number;
-  streak: number;
-  coins?: number;
-}) => {
-  if (!data.telegramId) {
-    console.warn("Нет Telegram ID, данные не будут сохранены в облако.");
-    return;
-  }
+// --- ФУНКЦИИ-ОБЕРТКИ ВОКРУГ НОВОГО API ---
 
-  const { error } = await supabase
-    .from('leaderboard') // Убедитесь, что таблица в Supabase называется именно так
-    .upsert({ 
-      telegram_id: data.telegramId,
-      username: data.username,
-      avatar_url: data.avatarUrl,
-      score: data.score,
-      bonus_time: data.bonuses.time,
-      bonus_hint: data.bonuses.hint,
-      bonus_swap: data.bonuses.swap,
-      bonus_wildcard: data.bonuses.wildcard,
-      rare_words: data.rareWords,
-      total_words: data.totalWords,
-      high_score: data.highScore,
-      days_played: data.daysPlayed,
-      streak: data.streak,
-      coins: data.coins,
-      updated_at: new Date() 
-    }, { onConflict: 'telegram_id' });
-
-  if (error) console.error('Ошибка Supabase:', error.message);
+const saveUserData = async (data: any) => {
+  if (!data.telegramId) return;
+  await apiClient.saveUser(data);
 };
 
-// Функция для сохранения результата ежедневного испытания
-const saveDailyScore = async (data: {
-  telegramId: number;
-  username: string;
-  avatarUrl?: string;
-  score: number;
-  bonuses?: { time: number; hint: number; swap: number; wildcard: number };
-  challengeId: string;
-  levelScores?: Record<number, number>;
-}) => {
-  const challengeIdInt = parseInt(data.challengeId) || 0;
-  
-  // 1. Проверяем, есть ли уже запись для этого игрока в этом испытании
-  const { data: existingEntry } = await supabase
-    .from('daily_scores')
-    .select('telegram_id')
-    .eq('telegram_id', data.telegramId)
-    .eq('challenge_id', challengeIdInt)
-    .single();
-
-  const payload = {
-    telegram_id: data.telegramId,
+const saveDailyScore = async (data: any) => {
+  // Адаптируем формат данных под API, если нужно
+  await apiClient.saveDailyScore({
+    telegramId: data.telegramId,
     username: data.username,
-    avatar_url: data.avatarUrl,
+    avatarUrl: data.avatarUrl,
     score: data.score,
-    challenge_id: challengeIdInt,
-    game_date: getDailyDateString(),
+    challengeId: data.challengeId,
+    levelScores: data.levelScores,
     bonus_time: data.bonuses?.time,
     bonus_hint: data.bonuses?.hint,
     bonus_swap: data.bonuses?.swap,
     bonus_wildcard: data.bonuses?.wildcard,
-    level_scores: data.levelScores
-  };
-
-  let error;
-
-  if (existingEntry) {
-    // Если запись есть — обновляем (ID не тратится)
-    ({ error } = await supabase
-      .from('daily_scores')
-      .update(payload)
-      .eq('telegram_id', data.telegramId)
-      .eq('challenge_id', challengeIdInt));
-  } else {
-    // Если записи нет — создаем новую (ID увеличивается на 1)
-    ({ error } = await supabase
-      .from('daily_scores')
-      .insert(payload));
-  }
-
-  if (error) console.error('Ошибка сохранения ежедневного счета:', error.message);
+  });
 };
 
-// Функция для проверки, играл ли пользователь сегодня
-const getUserDailyScore = async (telegramId: number, challengeId: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('daily_scores')
-      .select('*')
-      .eq('telegram_id', telegramId)
-      .eq('challenge_id', challengeId)
-      .single();
-    
-    if (error) {
-      if (error.code === 'PGRST116') return null; // Записи нет - это нормально
-      throw error; // Ошибка сети или базы - пробрасываем
-    }
-    return data;
-  } catch (e) {
-    console.error("Ошибка проверки ежедневной игры:", e);
-    throw e; // Пробрасываем ошибку дальше
-  }
+const getUserDailyScore = async (_telegramId: number, challengeId: string) => {
+  return await apiClient.getDailyScore(_telegramId, challengeId);
 };
 
-// Функция для загрузки профиля пользователя
-const fetchUserData = async (telegramId: number) => {
-  try {
-    const { data, error } = await supabase
-      .from('leaderboard')
-      .select('*')
-      .eq('telegram_id', telegramId)
-      .single();
-    
-    if (error) {
-      if (error.code === 'PGRST116') return null; // Игрок не найден (это нормально для новичка)
-      throw error; // Другая ошибка (сеть и т.д.) - пробрасываем её!
-    }
-    return data;
-  } catch (e) {
-    console.error("Ошибка загрузки профиля:", e);
-    throw e; // Пробрасываем ошибку дальше, чтобы App.tsx не подумал, что это новый игрок
-  }
+const fetchUserData = async (_telegramId: number) => {
+  // Игнорируем переданный ID, так как клиент теперь сам знает, кого грузить
+  return await apiClient.getUser(_telegramId);
 };
 
-// Функция для загрузки
 const fetchLeaderboard = async () => {
-  try {
-    const { data, error, count } = await supabase
-      .from('leaderboard')
-      .select('name:username, score, avatar_url, telegram_id', { count: 'exact' })
-      .order('score', { ascending: false })
-      .limit(10);  //ТОП ИГРОКОВ
-    
-    if (error) throw error;
-    return { players: data || [], count: count || 0 };
-  } catch (e) {
-    console.error("Ошибка загрузки рейтинга:", e);
-    return { players: [], count: 0 };
-  }
+  return await apiClient.getLeaderboard();
 };
 
-// Функция для загрузки ежедневного рейтинга
 const fetchDailyLeaderboard = async (challengeId: string) => {
-  try {
-    const { data, error, count } = await supabase
-      .from('daily_scores')
-      .select('name:username, score, avatar_url, telegram_id', { count: 'exact' })
-      .eq('challenge_id', challengeId)
-      .order('score', { ascending: false })
-      .limit(10); //ТОП ИГРОКОВ
-    
-    if (error) throw error;
-    return { players: data || [], count: count || 0 };
-  } catch (e) {
-    console.error("Ошибка загрузки ежедневного рейтинга:", e);
-    return { players: [], count: 0 };
-  }
+  return await apiClient.getDailyLeaderboard(challengeId);
 };
 
-// Функция для загрузки рейтинга за прошлый день
 const fetchPreviousDailyLeaderboard = async (currentChallengeId: string) => {
-  try {
-    const prevId = (parseInt(currentChallengeId) - 1).toString();
-    
-    const { data, error, count } = await supabase
-      .from('daily_scores')
-      .select('name:username, score, avatar_url, telegram_id', { count: 'exact' })
-      .eq('challenge_id', prevId)
-      .order('score', { ascending: false })
-      .limit(10); 
-    
-    if (error) throw error;
-    return { players: data || [], count: count || 0 };
-  } catch (e) {
-    console.error("Ошибка загрузки рейтинга за вчера:", e);
-    return { players: [], count: 0 };
-  }
+  const prevId = (parseInt(currentChallengeId) - 1).toString();
+  return await apiClient.getDailyLeaderboard(prevId);
 };
 
-// Функция для сохранения отзыва
-const saveFeedback = async (data: {
-  telegramId?: number;
-  username: string;
-  message: string;
-}) => {
-  const { error } = await supabase
-    .from('feedback')
-    .insert({ 
-      telegram_id: data.telegramId, 
-      username: data.username, 
-      message: data.message 
-    });
-
-  if (error) console.error('Ошибка отправки отзыва:', error.message);
+const saveFeedback = async (data: any) => {
+  await apiClient.saveFeedback(data);
 };
 
-// Функция для получения отзывов (для админа)
-const fetchFeedbacks = async () => {
-  const { data, error } = await supabase
-    .from('feedback')
-    .select('*')
-    .order('created_at', { ascending: false });
-  
-  if (error) console.error('Ошибка загрузки отзывов:', error.message);
-  return data || [];
+const fetchNotifications = async (_telegramId: number) => {
+  return await apiClient.getNotifications();
 };
 
-// Функция для добавления слова в словарь
-const addCustomWord = async (word: string, telegramId: number) => {
-  const { error } = await supabase
-    .from('custom_words')
-    .insert({ word: word.toLowerCase(), added_by: telegramId });
-  
-  if (error) {
-    console.error('Ошибка добавления слова:', error.message);
-    return false;
-  }
-  return true;
-};
-
-// Функция для получения кастомных слов
-const fetchCustomWords = async () => {
-  const { data, error } = await supabase
-    .from('custom_words')
-    .select('word');
-  
-  if (error) console.error('Ошибка загрузки слов:', error.message);
-  return data?.map(item => item.word) || [];
-};
-
-// Функция для получения слов для админки (с ID)
-const fetchAdminCustomWords = async () => {
-  const { data, error } = await supabase
-    .from('custom_words')
-    .select('*')
-    .order('created_at', { ascending: false });
-  
-  if (error) console.error('Ошибка загрузки слов админки:', error.message);
-  return data || [];
-};
-
-// Функция для удаления слова
-const deleteCustomWord = async (id: number) => {
-  const { error } = await supabase
-    .from('custom_words')
-    .delete()
-    .eq('id', id);
-  
-  if (error) {
-    console.error('Ошибка удаления слова:', error.message);
-    return false;
-  }
-  return true;
-};
-
-// Функция для обновления слова
-const updateCustomWord = async (id: number, newWord: string) => {
-  const { error } = await supabase
-    .from('custom_words')
-    .update({ word: newWord.toLowerCase() })
-    .eq('id', id);
-  
-  if (error) {
-    console.error('Ошибка обновления слова:', error.message);
-    return false;
-  }
-  return true;
-};
-
-// Функция для ответа на отзыв
-const sendFeedbackReply = async (feedbackId: number, message: string) => {
-  // 1. Обновляем статус в БД
-  const { error: dbError } = await supabase
-    .from('feedback')
-    .update({ status: 'replied', admin_reply: message })
-    .eq('id', feedbackId);
-
-  if (dbError) {
-    console.error('Ошибка обновления отзыва:', dbError.message);
-    return false;
-  }
-
-  // Отправка через Supabase отключена. Бэкенд на Python должен отслеживать новые ответы в БД.
-  console.log('Ответ сохранен в БД. Отправка сообщения через Supabase отключена.');
-
-  return true;
-};
-
-// Функция для архивации отзыва
-const archiveFeedback = async (id: number) => {
-  const { error } = await supabase
-    .from('feedback')
-    .update({ status: 'archived' })
-    .eq('id', id);
-
-  if (error) {
-    console.error('Ошибка архивации:', error.message);
-    return false;
-  }
-  return true;
-};
-
-// Функция для удаления отзыва
-const deleteFeedback = async (id: number) => {
-  const { error } = await supabase
-    .from('feedback')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    console.error('Ошибка удаления:', error.message);
-    return false;
-  }
-  return true;
-};
-
-// Функция для создания рассылки
-const sendBroadcast = async (message: string) => {
-  const { error } = await supabase
-    .from('broadcasts')
-    .insert({ message, status: 'pending' });
-
-  if (error) {
-    console.error('Ошибка создания рассылки:', error.message);
-    return false;
-  }
-  return true;
-};
-
-// Функция для получения уведомлений
-const fetchNotifications = async (telegramId: number) => {
-  const { data, error } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('telegram_id', telegramId);
-
-  if (error) {
-    // Игнорируем ошибку отсутствия таблицы (если миграция не прошла), чтобы не ломать игру
-    if (error.code !== '42P01') console.error('Ошибка загрузки уведомлений:', error.message);
-    return [];
-  }
-  return data || [];
-};
-
-// Функция для удаления уведомления
 const deleteNotification = async (id: number) => {
-  const { error } = await supabase
-    .from('notifications')
-    .delete()
-    .eq('id', id);
-
-  if (error) console.error('Ошибка удаления уведомления:', error.message);
+  await apiClient.deleteNotification(id);
 };
 
 const getActiveChallenge = async () => {
-  try {
-    // Берем последнее созданное испытание (сортировка по убыванию ID)
-    const { data: challenge, error } = await supabase
-      .from('challenges')
-      .select('id, letters, end_time')
-      .order('id', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error) throw error;
-
-    if (challenge) {
-      return { id: challenge.id.toString(), letters: challenge.letters, endTime: challenge.end_time };
-    }
-  } catch (e) {
-    console.error("Ошибка получения активного испытания:", e);
-  }
-
-  return null;
+  return await apiClient.getActiveChallenge();
 };
 
 const fetchUserRank = async (telegramId: number) => {
-  try {
-    const { data, error } = await supabase
-      .rpc('get_player_rank', { p_telegram_id: telegramId });
-    
-    if (error) throw error;
-
-    if (typeof data === 'number') return { rank: data };
-    if (Array.isArray(data) && data.length > 0) return data[0];
-
-    return null;
-  } catch (e) {
-    console.error("Ошибка загрузки ранга игрока:", e);
-    return null;
-  }
+  return await apiClient.getUserRank(telegramId);
 };
 
-// Исправляем потенциальную ошибку с null для root
+// Админские функции
+const addCustomWord = async (word: string) => await apiClient.addWord(word);
+const deleteCustomWord = async (idOrWord: number | string) => (await apiClient.deleteWord(idOrWord)).success;
+const updateCustomWord = async (word: string, definition: string) => (await apiClient.updateWord(word, definition)).success;
+const onSearchWord = async (word: string) => await apiClient.searchWord(word);
+const fetchFeedbacks = async () => await apiClient.getFeedbacks(); // Подключаем реальный API
+
+// Заглушки (пока не реализованы в новом API или не используются)
+const fetchAdminCustomWords = async () => []; 
+const fetchCustomWords = async () => [];
+const sendFeedbackReply = async (feedbackId: number, _telegramId: number, text: string) => (await apiClient.replyFeedback(feedbackId, text)).success;
+const archiveFeedback = async (id: number) => (await apiClient.archiveFeedback(id)).success;
+const deleteFeedback = async (id: number) => (await apiClient.deleteFeedback(id)).success;
+const sendBroadcast = async (message: string) => (await apiClient.sendBroadcast(message)).success;
+
+
 const rootElement = document.getElementById('root');
 if (rootElement) {
   const root = ReactDOM.createRoot(rootElement);
@@ -443,6 +109,7 @@ if (rootElement) {
         fetchAdminCustomWords={fetchAdminCustomWords}
         deleteCustomWord={deleteCustomWord}
         updateCustomWord={updateCustomWord}
+        onSearchWord={onSearchWord}
         sendFeedbackReply={sendFeedbackReply}
         archiveFeedback={archiveFeedback}
         deleteFeedback={deleteFeedback}

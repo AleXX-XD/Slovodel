@@ -30,7 +30,7 @@ export const RewardModal = ({ onClose, playSfx, achievement, reward }: RewardMod
   const isCustomBundle = reward.type === 'bundle';
 
   return (
-    <div className="modal-overlay z-[500] animate-in fade-in duration-300">
+    <div className="modal-overlay !z-[9999] animate-in fade-in duration-300">
       <div className="reward-modal-content">
         <div className="reward-gradient-bar"></div>
         {isDailyBundle ? (
@@ -55,9 +55,9 @@ export const RewardModal = ({ onClose, playSfx, achievement, reward }: RewardMod
                  </div>
             </div>
           ) : isCustomBundle ? (
-            <div className="grid grid-cols-2 gap-2 w-full px-4">
+            <div className="flex flex-wrap gap-2 w-full px-4 justify-center">
               {(reward as { type: 'bundle'; items: RewardItem[] }).items.map(item => (
-                <div key={item.type} className="flex items-center gap-2 bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-lg justify-center">
+                <div key={item.type} className="flex items-center gap-2 bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-lg justify-center min-w-[120px] flex-1">
                   {rewardIcons[item.type]}
                   <span className="font-bold text-indigo-700 dark:text-indigo-200">+{item.amount}</span>
                 </div>

@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { GameStatus, WordEntry } from './types';
 import { loadDictionary, getDictionary } from './utils/dictionary';
-import { SOUNDS } from './utils/constants';
-import { getDailyDateString, calculateStreakStatus, getStreakTitle, getUserRank, generateGrid, generateRandomReward } from './utils/gameUtils';
-import { CollectionModal, type RareWord } from './components/CollectionModal';
+import { SOUNDS, MODE_MARATHON } from './utils/constants';
+import { getDailyDateString, calculateStreakStatus, getStreakTitle, getUserRank, generateGrid, generateMarathonGrid, generateRandomReward, getMarathonSwapIndex, replaceLetterAtIndex, getLevelData, getRankMeta } from './utils/gameUtils';
+import { REWARDS_DATA } from './utils/rewards';
+import { type RareWord } from './types'; // Import from types now
 import { LeaderboardModal } from './components/LeaderboardModal';
-import { SettingsMenu } from './components/SettingsMenu';
 import { AboutSection } from './components/AboutSection';
-import { AchievementsModal } from './components/AchievementsModal';
+import { AchievementsModal } from './components/AchievementsModal'; // This is Profile
+import { MyAchievementsModal } from './components/MyAchievementsModal';
+import { StreakInfoModal } from './components/StreakInfoModal';
 import { MainMenu } from './components/MainMenu';
 import { GameScreen } from './components/GameScreen';
 import { ResultsScreen } from './components/ResultsScreen';
@@ -15,6 +17,8 @@ import { ShopModal } from './components/ShopModal';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { DailyChallengeModal } from './components/DailyChallengeModal';
 import { RewardModal } from './components/RewardModal';
+import { OnboardingModal } from './components/OnboardingModal';
+import { apiClient } from './utils/apiClient';
 
 /* --- START THEME LOGIC --- */
 const useTheme = () => {
@@ -45,9 +49,110 @@ interface Player {
   telegram_id?: number;
   avatar_url?: string;
 }
-export default function App({ saveUserData, saveDailyScore, getUserData, getActiveChallenge, getLeaderboard, getDailyLeaderboard, fetchPreviousDailyLeaderboard, getUserDailyScore, fetchUserRank, saveFeedback, fetchFeedbacks, addCustomWord, fetchCustomWords, fetchAdminCustomWords, deleteCustomWord, updateCustomWord, sendFeedbackReply, archiveFeedback, deleteFeedback, sendBroadcast, fetchNotifications, deleteNotification, tg }: any) {
+
+const LoginScreen = ({ onLogin }: { onLogin: (user: any) => void }) => {
+  useEffect(() => {
+    // Динамически вставляем скрипт виджета
+    const script = document.createElement('script');
+    script.src = "https://telegram.org/js/telegram-widget.js?22";
+    //script.setAttribute('data-telegram-login', "slowodel_bot"); 
+    //Бот для тестирования (Не удалять!)    
+    script.setAttribute('data-telegram-login', "testmyfuckin_bot"); 
+    script.setAttribute('data-size', "large");
+    script.setAttribute('data-radius', "15");
+    script.setAttribute('data-onauth', "onTelegramAuth(user)");
+    script.setAttribute('data-request-access', "write");
+    script.async = true;
+    
+    // Создаем контейнер для виджета
+    const container = document.getElementById('tg-login-container');
+    if (container) container.appendChild(script);
+
+    // Глобальный колбэк для виджета
+    (window as any).onTelegramAuth = async (user: any) => {
+       try {
+         const res = await apiClient.login(user);
+         if (res && res.user) {
+           onLogin(res.user);
+         }
+       } catch (e) {
+         alert("Ошибка входа!");
+       }
+    };
+  }, []);
+
+  return (
+    <div className="app-wrapper items-center justify-center p-6 text-center">
+      <div className="logo-loading mb-8"></div>
+      <h1 className="text-2xl font-black text-indigo-900 dark:text-white mb-2 uppercase tracking-tight">Словодел</h1>
+      <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-xs">Войдите через Telegram, чтобы сохранить прогресс и участвовать в рейтинге</p>
+      <div id="tg-login-container" className="flex justify-center"></div>
+
+      <p className="mt-8 text-xs opacity-50 text-gray-900 dark:text-white">Игра доступна как в браузере, так и внутри Telegram</p>
+    </div>
+  );
+};
+
+export default function App({ saveUserData, saveDailyScore, getUserData, getActiveChallenge, getLeaderboard, getDailyLeaderboard, fetchPreviousDailyLeaderboard, getUserDailyScore, fetchUserRank, saveFeedback, fetchFeedbacks, addCustomWord, fetchCustomWords, deleteCustomWord, updateCustomWord, onSearchWord, sendFeedbackReply, archiveFeedback, deleteFeedback, sendBroadcast, fetchNotifications, deleteNotification, tg }: any) {
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-  const USER_NAME = tgUser ? (tgUser.first_name + (tgUser.last_name ? ' ' + tgUser.last_name : '')) : 'Анонимный Лингвист';
+  // Локально всегда авторизованы
+  const [isAuthenticated, setIsAuthenticated] = useState(() => import.meta.env.DEV || !!(tgUser || localStorage.getItem('slovodel_token')));
+  const [browserUser, setBrowserUser] = useState<any>(null);
+
+  const currentUser = tgUser || browserUser;
+  const USER_ID = currentUser?.id || currentUser?.telegram_id;
+  // Приоритет: Имя + Фамилия -> Юзернейм -> Игрок ID
+  const USER_NAME = currentUser ? (
+    (currentUser.first_name || currentUser.last_name) 
+      ? (currentUser.first_name + (currentUser.last_name ? ' ' + currentUser.last_name : '')).trim()
+      : (currentUser.username || `Игрок ${USER_ID}`)
+  ) : 'Анонимный Лингвист';
+  const USER_AVATAR = currentUser?.photo_url || currentUser?.avatar_url;
+
+  // Загружаем профиль при старте
+  useEffect(() => {
+    console.log("Profile Effect check:", { isAuthenticated, tgUser: !!tgUser, browserUser: !!browserUser });
+    // Убираем !tgUser, чтобы загружать данные и для Telegram-пользователей
+    if (isAuthenticated && !browserUser) {
+      console.log("Fetching profile...");
+      apiClient.getMyProfile().then(user => {
+          if (user) {
+            setBrowserUser(user);
+            // Жестко синхронизируем данные с сервером
+            setTotalScore(user.score || 0);
+            // Обратите внимание: поле high_score с сервера (snake_case)
+            setHighScore(user.high_score || 0);
+            setCoins(user.coins || 0);
+            setDaysPlayed(user.days_played || 0);
+            setStreak(user.streak || 0);
+            if (user.rare_words) setRareWords(user.rare_words);
+            
+            // Бонусы
+            setBonusTimeLeft(user.bonus_time ?? 2);
+            setBonusHintLeft(user.bonus_hint ?? 2);
+            setBonusSwapLeft(user.bonus_swap ?? 2);
+            setBonusWildcardLeft(user.bonus_wildcard ?? 2);
+
+            // Места в топе
+            setDailyPlaces({
+              first: user.daily_1_place || 0,
+              second: user.daily_2_place || 0,
+              third: user.daily_3_place || 0
+            });
+            
+            setMarathonHighScore(user.marathon_high_score || 0);
+            if (user.claimed_rewards) setClaimedRewards(user.claimed_rewards);
+            
+            // Загружаем ранг
+            apiClient.getUserRank().then(rankData => {
+               if (rankData && rankData.rank) setUserRank(rankData.rank);
+            });
+          }
+        }).catch(e => {
+          console.error("Failed to load profile", e);
+        });
+    }
+  }, [isAuthenticated, tgUser]);
   
   // Получаем список ID администраторов из переменных окружения (VITE_ADMIN_IDS="123,456")
   const ADMIN_IDS = (import.meta.env.VITE_ADMIN_IDS || '')
@@ -57,14 +162,16 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   
   const [status, setStatus] = useState<GameStatus>('menu');
   const [isDictLoading, setIsDictLoading] = useState(true);
+  // ... (остальные стейты)
   const [timeLeft, setTimeLeft] = useState(60);
   const [score, setScore] = useState(0);
   const [multiplier, setMultiplier] = useState(1);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isDailyMode, setIsDailyMode] = useState(false);
-  const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
-  const [showCollection, setShowCollection] = useState(false);
+  const [isMarathonMode, setIsMarathonMode] = useState(false);
+  const [isAchievementsOpen, setIsAchievementsOpen] = useState(false); // Profile
+  const [showMyAchievements, setShowMyAchievements] = useState(false); // New "My Achievements" (Collection, etc)
+  const [showStreakInfo, setShowStreakInfo] = useState(false);
   const [isShopOpen, setIsShopOpen] = useState(false);
   const [shopPreviousScreen, setShopPreviousScreen] = useState<'about' | 'achievements' | null>(null);
   const [shopInitialTab, setShopInitialTab] = useState<'bonuses' | 'coins'>('bonuses');
@@ -81,6 +188,11 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   });
   const [challengeLetters, setChallengeLetters] = useState<any>(null);
   const [challengeEndTime, setChallengeEndTime] = useState<string | null>(null);
+  const marathonSecondsRef = useRef(0);
+  const [marathonSwapTarget, setMarathonSwapTarget] = useState<number | null>(null);
+  const marathonSwapTargetRef = useRef<number | null>(null);
+  
+
 
   // Состояния для глобального рейтинга
   const [showGlobalRanking, setShowGlobalRanking] = useState(false);
@@ -89,12 +201,36 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   const [leaderboardTab, setLeaderboardTab] = useState<'all' | 'daily' | 'previous'>('all');
   const [totalPlayersCount, setTotalPlayersCount] = useState(0);
   const [isLeaderboardLoading, setIsLeaderboardLoading] = useState(false);
+  
+  // Онбординг для новых игроков
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return !localStorage.getItem('slovodel_onboarding_completed');
+  });
 
   const { theme, setTheme } = useTheme();
 
+  // Инициализация Telegram WebApp
+  useEffect(() => {
+    if (tg) {
+      tg.expand();
+      tg.ready();
+      // Отключаем вертикальные свайпы (закрытие свайпом вниз)
+      if (typeof tg.isVerticalSwipesEnabled !== 'undefined') {
+        tg.isVerticalSwipesEnabled = false;
+      }
+      // Устанавливаем цвет хедера
+      if (theme === 'dark') {
+        tg.setHeaderColor('#0f172a'); // slate-900
+        tg.setBackgroundColor('#0f172a');
+      } else {
+        tg.setHeaderColor('#ffffff');
+        tg.setBackgroundColor('#ffffff');
+      }
+    }
+  }, [tg, theme]);
+
   const [musicVolume, setMusicVolume] = useState(() => Number(localStorage.getItem('slovodel_music_vol') ?? 0.3));
   const [sfxVolume, setSfxVolume] = useState(() => Number(localStorage.getItem('slovodel_sfx_vol') ?? 0.5));
-  const bgMusicRef = useRef<HTMLAudioElement | null>(null);
 
   const [totalScore, setTotalScore] = useState(() => {
     const saved = localStorage.getItem('slovodel_total_score');
@@ -133,8 +269,15 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     return [];
   });
 
+  const [marathonHighScore, setMarathonHighScore] = useState(0);
+  const [marathonSecondsAdded, setMarathonSecondsAdded] = useState(0);
+  const [claimedRewards, setClaimedRewards] = useState<string[]>([]);
+
   // Новые состояния для статистики
-  const [daysPlayed, setDaysPlayed] = useState(0);
+  const [daysPlayed, setDaysPlayed] = useState(() => {
+    const saved = localStorage.getItem('slovodel_days_played');
+    return saved ? parseInt(saved, 10) : 0;
+  });
   const [dailyPlaces, setDailyPlaces] = useState({ first: 0, second: 0, third: 0 });
   const [userRank, setUserRank] = useState(0);
 
@@ -168,6 +311,34 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   const [pendingRewards, setPendingRewards] = useState<{ achievement: string; reward: { type: string; amount: number; } }[]>([]);
   const [otherUserProfile, setOtherUserProfile] = useState<any | null>(null);
 
+  const unclaimedRewardsCount = useMemo(() => {
+      let count = 0;
+      const rare9to10 = rareWords.filter(w => w.length >= 9 && w.length <= 10).length;
+      const rare11plus = rareWords.filter(w => w.length >= 11).length;
+
+      REWARDS_DATA.forEach(section => {
+          section.items.forEach(item => {
+              if (claimedRewards.includes(item.id)) return;
+              
+              let currentVal = 0;
+              switch (item.category) {
+                  case 'words': currentVal = totalWords; break;
+                  case 'score': currentVal = highScore; break;
+                  case 'marathon': currentVal = marathonHighScore; break;
+                  case 'days': currentVal = daysPlayed; break;
+                  case 'rare_total': currentVal = rareWords.length; break;
+                  case 'rare_9_10': currentVal = rare9to10; break;
+                  case 'rare_11': currentVal = rare11plus; break;
+              }
+              
+              if (currentVal >= item.target) {
+                  count++;
+              }
+          });
+      });
+      return count;
+  }, [totalWords, highScore, marathonHighScore, daysPlayed, rareWords, claimedRewards]);
+
   // Функция для тестирования UI из админки
   const handleTestModal = (type: string) => {
     setStatus('menu'); // Закрываем админку, чтобы увидеть результат
@@ -175,7 +346,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       switch (type) {
         case 'reward': setActiveReward({ achievement: 'Тестовая награда', reward: { type: 'hint', amount: 5 } }); playSfx('reward_fanfare'); break;
         case 'rank_up': 
-          setNewRankReached('Оракул Словодела'); 
+          setNewRankReached('10 уровень'); 
           setStatus('results');
           break;
       }
@@ -203,17 +374,29 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   useEffect(() => {
     const res = calculateStreakStatus();
     if (res.status === 'reset' && streak > 0) {
-      showToast('Твой огонь погас... Но ничего, фениксы всегда возрождаются из пепла и букв! Начинаем новую серию!', 'bad');
       setStreak(0);
       localStorage.setItem('slovodel_streak_count', '0');
     }
   }, []);
 
   const [grid, setGrid] = useState<string[]>([]);
+  
+  // Ref для доступа к актуальному гриду в таймере марафона
+  const gridRef = useRef<string[]>([]);
+  useEffect(() => {
+    gridRef.current = grid;
+  }, [grid]);
+
   const [currentInput, setCurrentInput] = useState<string[]>([]);
   const [foundWords, setFoundWords] = useState<WordEntry[]>([]);
   const [message, setMessage] = useState<{ text: string, type: 'good' | 'bad' } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  // Вычисляем статус дейлика (поднято наверх для использования в эффектах)
+  const isCurrentChallenge = dailyStatus.challengeId === currentChallengeId;
+  const dailyLevelsDone = isCurrentChallenge && dailyStatus.scores ? Object.keys(dailyStatus.scores).map(Number) : [];
+  const isDailyFullComplete = isCurrentChallenge && [10, 8, 6].every(l => dailyStatus.scores && Object.prototype.hasOwnProperty.call(dailyStatus.scores, l));
+  const currentDailyScore = isCurrentChallenge && dailyStatus.scores ? Object.values(dailyStatus.scores).reduce((a, b) => a + b, 0) : 0;
   
   // Бонусы: инициализация из localStorage (по умолчанию 2, если пусто)
   const [bonusTimeLeft, setBonusTimeLeft] = useState(() => Number(localStorage.getItem('slovodel_bonus_time') ?? 2));
@@ -231,7 +414,6 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   const [isSwapActive, setIsSwapActive] = useState(false);
   const [hintWord, setHintWord] = useState<string | null>(null);
   const [hintDefinition, setHintDefinition] = useState<string | null>(null);
-  const [isDefinitionLoading, setIsDefinitionLoading] = useState(false);
   const [usedHints, setUsedHints] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -241,45 +423,162 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     }
   }, [hintActiveSeconds, hintRevealLeft, hintWord]);
 
+  // Web Audio API Context
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioBuffersRef = useRef<Record<string, AudioBuffer>>({});
+  
+  // Refs для фоновой музыки
+  const bgMusicSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const bgMusicGainRef = useRef<GainNode | null>(null);
+
+  // Инициализация звуковой системы и предзагрузка
+  useEffect(() => {
+    const initAudio = async () => {
+      // Создаем контекст только один раз
+      if (!audioContextRef.current) {
+        const AudioContextClass = (window.AudioContext || (window as any).webkitAudioContext);
+        audioContextRef.current = new AudioContextClass();
+      }
+
+      const ctx = audioContextRef.current;
+      if (!ctx) return;
+
+      // Загружаем все звуки из констант
+      const loadPromises = Object.entries(SOUNDS).map(async ([key, url]) => {
+        try {
+          const response = await fetch(url);
+          const arrayBuffer = await response.arrayBuffer();
+          const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+          audioBuffersRef.current[key] = audioBuffer;
+        } catch (e) {
+          console.error(`Ошибка загрузки звука ${key}:`, e);
+        }
+      });
+
+      await Promise.all(loadPromises);
+    };
+
+    initAudio();
+    
+    // Очистка при размонтировании (редкий кейс для App, но полезно)
+    return () => {
+      if (bgMusicSourceRef.current) {
+        bgMusicSourceRef.current.stop();
+        bgMusicSourceRef.current = null;
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+    };
+  }, []);
+
   const playSfx = useCallback((type: keyof typeof SOUNDS) => {
+    // Фоновая музыка управляется отдельным эффектом, но playSfx может использоваться для старта при интеракции
     if (type === 'bg') return;
-    const audio = new Audio(SOUNDS[type]);
-    audio.volume = sfxVolume;
-    audio.play().catch(() => { });
+
+    const ctx = audioContextRef.current;
+    if (!ctx) return;
+
+    // Браузеры требуют взаимодействия пользователя для активации AudioContext
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(e => console.error("Не удалось запустить AudioContext:", e));
+    }
+
+    const buffer = audioBuffersRef.current[type];
+    if (!buffer) {
+      // Если буфер еще не загружен (или ошибка), можно попробовать fallback или просто выйти
+      return; 
+    }
+
+    try {
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+
+      // Контроль громкости
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = sfxVolume;
+
+      source.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      source.start(0);
+    } catch (e) {
+      console.error("Audio play error", e);
+    }
 
     // Вибрация при звуковых эффектах (успех/ошибка)
     if (type === 'success' || type === 'rare_success') tg?.HapticFeedback?.notificationOccurred('success');
     if (type === 'error') tg?.HapticFeedback?.notificationOccurred('error');
     if (type === 'bonus') tg?.HapticFeedback?.impactOccurred('medium');
+    if (type === 'click') tg?.HapticFeedback?.selectionChanged();
   }, [sfxVolume, tg]);
 
 
-  /* --- BACKGROUND MUSIC LOGIC --- */
+  /* --- BACKGROUND MUSIC LOGIC (Web Audio API) --- */
 
+  // Эффект для управления воспроизведением музыки
   useEffect(() => {
-    if (!bgMusicRef.current) {
-      bgMusicRef.current = new Audio(SOUNDS.bg);
-      bgMusicRef.current.loop = true;
-      bgMusicRef.current.volume = musicVolume;
+    const ctx = audioContextRef.current;
+    if (!ctx) return;
+
+    const shouldPlay = status === 'playing' && !isMenuOpen && !isShopOpen;
+
+    if (shouldPlay) {
+      // Если музыка должна играть, но не играет
+      if (!bgMusicSourceRef.current) {
+        const buffer = audioBuffersRef.current['bg'];
+        if (buffer) {
+            // Возобновляем контекст, если он приостановлен (важно для автоплея)
+            if (ctx.state === 'suspended') {
+                ctx.resume().catch(() => {});
+            }
+
+            try {
+                const source = ctx.createBufferSource();
+                source.buffer = buffer;
+                source.loop = true;
+
+                const gainNode = ctx.createGain();
+                gainNode.gain.value = musicVolume;
+
+                source.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                source.start(0);
+
+                bgMusicSourceRef.current = source;
+                bgMusicGainRef.current = gainNode;
+            } catch (e) {
+                console.error("BG Music start error", e);
+            }
+        }
+      } else {
+          // Если уже играет, просто обновляем громкость (на случай если она изменилась пока мы были здесь)
+          if (bgMusicGainRef.current) {
+              bgMusicGainRef.current.gain.value = musicVolume;
+          }
+      }
+    } else {
+      // Если музыка не должна играть, но играет — останавливаем
+      if (bgMusicSourceRef.current) {
+        try {
+            bgMusicSourceRef.current.stop();
+        } catch (e) {}
+        bgMusicSourceRef.current = null;
+        bgMusicGainRef.current = null;
+      }
     }
+  }, [status, isMenuOpen, isShopOpen, musicVolume]); // Добавили musicVolume в зависимости для рестарта/обновления
+
+  // Отдельный эффект для обновления громкости без перезапуска трека
+  useEffect(() => {
+      if (bgMusicGainRef.current) {
+          bgMusicGainRef.current.gain.value = musicVolume;
+      }
   }, [musicVolume]);
 
   useEffect(() => {
-    if (bgMusicRef.current) {
-      if (status === 'playing' && !isMenuOpen && !isAboutOpen && !isShopOpen) {
-        bgMusicRef.current.play().catch((e) => console.log("Audio play failed", e));
-      } else {
-        bgMusicRef.current.pause();
-        // Сбрасываем трек, если раунд закончен
-        if (status !== 'playing') {
-          bgMusicRef.current.currentTime = 0;
-        }
-      }
-    }
-  }, [status, isMenuOpen, isAboutOpen, isShopOpen]);
-
-  useEffect(() => {
-    if (bgMusicRef.current) bgMusicRef.current.volume = musicVolume;
     localStorage.setItem('slovodel_music_vol', musicVolume.toString());
   }, [musicVolume]);
 
@@ -330,7 +629,8 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     localStorage.setItem('slovodel_rare_words', JSON.stringify(rareWords));
     localStorage.setItem('slovodel_total_words', totalWords.toString());
     localStorage.setItem('slovodel_coins', coins.toString());
-  }, [totalScore, highScore, rareWords, totalWords]);
+    localStorage.setItem('slovodel_days_played', daysPlayed.toString());
+  }, [totalScore, highScore, rareWords, totalWords, coins, daysPlayed]);
 
   // Синхронизация бонусов с localStorage
   useEffect(() => { localStorage.setItem('slovodel_bonus_time', bonusTimeLeft.toString()); }, [bonusTimeLeft]);
@@ -359,15 +659,19 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           // Статистика
           setTotalWords(data.total_words ?? 0);
           
-          // Синхронизируем серию, ТОЛЬКО если данные в облаке свежие (сегодня или вчера)
+          // Синхронизируем серию и статус "играл сегодня"
+          const lastUpdate = data.updated_at ? new Date(data.updated_at) : new Date(0);
+          const now = new Date();
+          const isToday = lastUpdate.toDateString() === now.toDateString();
+          
+          if (isToday) {
+             setHasPlayedToday(true);
+             localStorage.setItem('slovodel_streak_date', getDailyDateString());
+          }
+
           if ((data.streak ?? 0) > streak) {
-            const lastUpdate = data.updated_at ? new Date(data.updated_at) : new Date(0);
-            const now = new Date();
             const yesterday = new Date(now);
             yesterday.setDate(now.getDate() - 1);
-
-            // Сравниваем даты (день, месяц, год)
-            const isToday = lastUpdate.toDateString() === now.toDateString();
             const isYesterday = lastUpdate.toDateString() === yesterday.toDateString();
 
             if (isToday || isYesterday) {
@@ -398,7 +702,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           setTotalScore(0);
           setHighScore(0);
           setRareWords([]);
-          setCoins(0); // Новым игрокам можно дать приветственный бонус, например 50
+          setCoins(0); // Новым игрокам 0 монет
           setBonusTimeLeft(2);
           setBonusHintLeft(2);
           setBonusSwapLeft(2);
@@ -456,8 +760,9 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         if (notifs && notifs.length > 0) {
           const newRewards = notifs.map(n => {
             if (n.type === 'daily_win') {
+              const dateStr = n.data.date ? ` (${n.data.date})` : '';
               return {
-                achievement: `🏆 ${n.data.rank} место в Дневном турнире!`, // Дата уже есть в дате создания, но можно взять из data
+                achievement: `🏆 ${n.data.rank} место в Дневном турнире${dateStr}!`, 
                 reward: { type: 'daily_bundle', amount: n.data.bonus_amount },
                 notificationId: n.id
               };
@@ -517,9 +822,21 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       wildcard: bonusWildcardLeft
     };
 
-    // Сохраняем очки и обрабатываем возможные ошибки (например, если нет интернета)
+    if (finalScore > oldHighScore) {
+      setHighScore(finalScore);
+      setLastRoundRecordBeaten(finalScore - oldHighScore);
+    } else {
+      setLastRoundRecordBeaten(null);
+    }
+
+    // В марафоне рекорд — это добавленные секунды
+    if (isMarathonMode && marathonSecondsAdded > marathonHighScore) {
+        setMarathonHighScore(marathonSecondsAdded);
+    }
+
+    // Сохраняем очки и обрабатываем возможные ошибки
     Promise.resolve(saveUserData({
-      telegramId: tgUser?.id,
+      telegramId: USER_ID,
       username: USER_NAME,
       score: newTotalScore,
       bonuses: bonusesToSave,
@@ -529,17 +846,11 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       highScore: currentHighScore,
       daysPlayed: currentDaysPlayed,
       streak: currentStreak,
-      coins: coins
+      coins: coins,
+      marathonHighScore: (isMarathonMode && marathonSecondsAdded > marathonHighScore) ? marathonSecondsAdded : marathonHighScore
     })).catch((err: any) => {
       console.error("Ошибка сохранения рекорда:", err);
     });
-
-    if (finalScore > oldHighScore) {
-      setHighScore(finalScore);
-      setLastRoundRecordBeaten(finalScore - oldHighScore);
-    } else {
-      setLastRoundRecordBeaten(null);
-    }
 
     if (!hasPlayedToday) {
       setStreak(currentStreak);
@@ -566,8 +877,6 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
 
         const reward = { type: 'bundle', items: rewardItems };
         setPendingRewards(prev => [...prev, { achievement: `Серия: ${currentStreak} дней!`, reward: reward as any }]);
-      } else {
-        showToast('Твой внутренний филолог в огне! 🔥 Продолжай в том же духе!', 'good');
       }
     }
 
@@ -611,18 +920,6 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     setHintRevealLeft(0);
     playSfx('bonus');
 
-    // Telegram MainButton на финише
-    if (tg) {
-      tg.MainButton.setText("В главное меню");
-      tg.MainButton.show();
-      const onMenuClick = () => {
-        setStatus('menu');
-        tg.MainButton.hide();
-        tg.MainButton.offClick(onMenuClick);
-      };
-      tg.MainButton.onClick(onMenuClick);
-      tg.disableClosingConfirmation();
-    }
     setStatus('results');
   }, [score, USER_NAME, saveUserData, saveDailyScore, highScore, totalScore, bonusTimeLeft, bonusHintLeft, bonusSwapLeft, bonusWildcardLeft, tgUser, rareWords, streak, hasPlayedToday, isDailyMode, playSfx, showToast, tg, totalWords, currentChallengeId, daysPlayed, dailyStatus.scores]);
 
@@ -660,24 +957,26 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     }
 
     playSfx('bonus');
+    showToast('Награда получена!', 'good');
     setActiveReward(null);
   };
 
   // Эффект для показа отложенных наград в меню
   useEffect(() => {
     if (status === 'menu' && pendingRewards.length > 0) {
-      if (!activeReward && !streakMilestone && !isMenuOpen && !isAboutOpen && !isAchievementsOpen && !showCollection && !isShopOpen && !isDailyChallengeOpen && !showGlobalRanking) {
+      if (!activeReward && !streakMilestone && !isMenuOpen && !isAchievementsOpen && !showMyAchievements && !showStreakInfo && !isShopOpen && !isDailyChallengeOpen && !showGlobalRanking) {
         const next = pendingRewards[0];
         setActiveReward(next);
         setPendingRewards(prev => prev.slice(1));
         playSfx('reward_fanfare');
       }
     }
-  }, [status, pendingRewards, activeReward, streakMilestone, isMenuOpen, isAboutOpen, isAchievementsOpen, showCollection, isShopOpen, isDailyChallengeOpen, showGlobalRanking, playSfx]);
+  }, [status, pendingRewards, activeReward, streakMilestone, isMenuOpen, isAchievementsOpen, showMyAchievements, showStreakInfo, isShopOpen, isDailyChallengeOpen, showGlobalRanking, playSfx]);
 
   useEffect(() => {
     let interval: number;
-    if (status === 'playing' && timeLeft > 0 && !isMenuOpen && !isAboutOpen && !isShopOpen && swapTargetIdx === null) {
+    // Основной таймер игры (обратный отсчет)
+    if (status === 'playing' && timeLeft > 0 && !isMenuOpen && !isShopOpen && swapTargetIdx === null) {
       interval = window.setInterval(() => {
         setTimeLeft(t => t - 1);
         setWildcardActiveSeconds(ws => Math.max(0, ws - 1));
@@ -692,47 +991,153 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       finishGame();
     }
     return () => clearInterval(interval);
-  }, [status, timeLeft, isMenuOpen, isAboutOpen, isShopOpen, finishGame, swapTargetIdx, hintActiveSeconds, hintRevealLeft]);
+  }, [status, timeLeft, isMenuOpen, isShopOpen, finishGame, swapTargetIdx, hintActiveSeconds, hintRevealLeft]);
+
+  // Отдельный таймер для марафона (замена букв)
+  useEffect(() => {
+    if (status !== 'playing' || !isMarathonMode || isMenuOpen || isShopOpen) return;
+
+    const interval = window.setInterval(() => {
+        marathonSecondsRef.current += 1;
+        const cycle = marathonSecondsRef.current % 30;
+        
+        // Предупреждение за 5 секунд (на 25-й секунде цикла)
+        if (cycle === 25) {
+            const currentGrid = gridRef.current;
+            const forbidden: number[] = [];
+            // Если есть подсказка, не трогаем буквы из неё
+            if (hintWord) {
+                const gridArr = currentGrid.map(l => l.toLowerCase());
+                const currentUsage: Record<number, number> = {};
+                for (const char of hintWord.toLowerCase()) {
+                    let bestIdx = -1;
+                    let minUsage = Infinity;
+                    for (let i = 0; i < gridArr.length; i++) {
+                        if (gridArr[i] === char) {
+                            const usage = currentUsage[i] || 0;
+                            if (usage < minUsage) {
+                                minUsage = usage;
+                                bestIdx = i;
+                            }
+                        }
+                    }
+                    if (bestIdx !== -1) {
+                        currentUsage[bestIdx] = (currentUsage[bestIdx] || 0) + 1;
+                        forbidden.push(bestIdx);
+                    }
+                }
+            }
+            const target = getMarathonSwapIndex(currentGrid.length, forbidden);
+            marathonSwapTargetRef.current = target;
+            setMarathonSwapTarget(target);
+        }
+        
+        // Замена буквы (на 30-й секунде -> 0)
+        if (cycle === 0 && marathonSecondsRef.current > 0) {
+            const targetIdx = marathonSwapTargetRef.current;
+            
+            // Если цель была выбрана (безопасная), меняем. Если нет - пропускаем ход, чтобы не ломать игру.
+            if (targetIdx !== null) {
+                setGrid(prev => {
+                    // Дополнительная проверка на границы массива (на всякий случай)
+                    if (targetIdx >= prev.length) return prev;
+                    
+                    const newGrid = replaceLetterAtIndex(prev, targetIdx);
+                    return newGrid;
+                });
+                playSfx('bonus');
+            }
+            
+            setMarathonSwapTarget(null);
+            marathonSwapTargetRef.current = null;
+        }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [status, isMarathonMode, isMenuOpen, isShopOpen, hintWord, playSfx]);
 
   const startGame = (difficultyLevel: number, daily: boolean = false) => {
     if (isDictLoading) return;
     playSfx('click');
-    // Множитель теперь зависит от сложности и в обычном, и в ежедневном режиме
-    setMultiplier(difficultyLevel === 10 ? 1 : difficultyLevel === 8 ? 1.5 : 2);
+    
     setIsDailyMode(daily);
     setIsDailyChallengeOpen(false);
 
-    if (daily) {
-      // Сохраняем текущие бонусы и выдаем фиксированный набор для дейлика
-      userBonusesRef.current = {
-        time: bonusTimeLeft,
-        hint: bonusHintLeft,
-        swap: bonusSwapLeft,
-        wildcard: bonusWildcardLeft
-      };
-      
-      // Если есть сохраненные бонусы для дейлика на сегодня — используем их, иначе даем по 1
-      const dailyBonuses = (dailyStatus.challengeId === currentChallengeId && dailyStatus.bonuses) 
-        ? dailyStatus.bonuses 
-        : { time: 1, hint: 1, swap: 1, wildcard: 1 };
+    if (difficultyLevel === MODE_MARATHON) {
+        setIsMarathonMode(true);
+        setMultiplier(1); // Коэффициент x1 для марафона
+        setGrid(generateMarathonGrid()); // 10 букв, 1 редкая
+        setTimeLeft(30); // Старт с 30 секунд
+        marathonSecondsRef.current = 0;
+        setMarathonSwapTarget(null);
+        marathonSwapTargetRef.current = null;
+    } else {
+        setIsMarathonMode(false);
+        setMultiplier(difficultyLevel === 10 ? 1 : difficultyLevel === 8 ? 1.5 : 2);
+        
+        if (daily) {
+          // Сохраняем текущие бонусы и выдаем фиксированный набор для дейлика
+          userBonusesRef.current = {
+            time: bonusTimeLeft,
+            hint: bonusHintLeft,
+            swap: bonusSwapLeft,
+            wildcard: bonusWildcardLeft
+          };
+          
+          // Если есть сохраненные бонусы для дейлика на сегодня — используем их, иначе даем по 1
+          const dailyBonuses = (dailyStatus.challengeId === currentChallengeId && dailyStatus.bonuses) 
+            ? dailyStatus.bonuses 
+            : { time: 1, hint: 1, swap: 1, wildcard: 1 };
 
-      setBonusTimeLeft(dailyBonuses.time);
-      setBonusHintLeft(dailyBonuses.hint);
-      setBonusSwapLeft(dailyBonuses.swap);
-      setBonusWildcardLeft(dailyBonuses.wildcard);
+          setBonusTimeLeft(dailyBonuses.time);
+          setBonusHintLeft(dailyBonuses.hint);
+          setBonusSwapLeft(dailyBonuses.swap);
+          setBonusWildcardLeft(dailyBonuses.wildcard);
+
+          // Сразу фиксируем начало уровня (0 очков), чтобы при перезагрузке он считался сыгранным
+          const currentScores = dailyStatus.scores || {};
+          // Если очков еще нет для этого уровня - ставим 0 (начало попытки)
+          if (currentScores[difficultyLevel] === undefined) {
+              const newScores = { ...currentScores, [difficultyLevel]: 0 };
+              const info = { 
+                  challengeId: currentChallengeId, 
+                  scores: newScores, 
+                  bonuses: dailyBonuses, 
+                  userId: tgUser?.id 
+              };
+              setDailyStatus(info);
+              localStorage.setItem('slovodel_daily_play_v2', JSON.stringify(info));
+              
+              if (saveDailyScore && tgUser?.id) {
+                saveDailyScore({
+                  telegramId: tgUser.id,
+                  username: USER_NAME,
+                  avatarUrl: tgUser.photo_url,
+                  score: Object.values(newScores).reduce((a, b) => a + b, 0),
+                  challengeId: currentChallengeId,
+                  bonuses: dailyBonuses,
+                  levelScores: newScores
+                });
+              }
+          }
+        } else {
+            // Обычная игра
+            setGrid(generateGrid(difficultyLevel));
+            setTimeLeft(60);
+        }
     }
 
     // Если это дейлик и у нас есть загруженные буквы - используем их
-    // Иначе генерируем новые (для обычной игры)
-    const startGrid = (daily && challengeLetters) 
-      ? challengeLetters[difficultyLevel] 
-      : generateGrid(difficultyLevel);
+    if (daily && challengeLetters) {
+        setGrid(challengeLetters[difficultyLevel]);
+        setTimeLeft(60);
+    } 
 
-    setGrid(startGrid);
     setFoundWords([]);
     setCurrentInput([]);
     setScore(0);
-    setTimeLeft(60);
+    setMarathonSecondsAdded(0);
+    
     // Бонусы больше не сбрасываются здесь! Они берутся из общего инвентаря.
     setWildcardActiveSeconds(0);
     setHintActiveSeconds(0);
@@ -750,14 +1155,30 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   };
 
   const hintIndices = useMemo(() => {
-    if (!hintWord) return new Set<number>();
-    const indices = new Set<number>();
-    const tempGrid = [...grid];
+    if (!hintWord) return {};
+    
+    const indices: Record<number, number> = {};
+    const gridArr = grid.map(l => l.toLowerCase());
+    const currentUsage: Record<number, number> = {};
+
     for (const char of hintWord.toLowerCase()) {
-      const idx = tempGrid.findIndex(l => l.toLowerCase() === char);
-      if (idx !== -1) {
-        indices.add(idx);
-        tempGrid[idx] = "USED";
+      let bestIdx = -1;
+      let minUsage = Infinity;
+
+      // Ищем плитку с этой буквой, которая использовалась меньше всего раз
+      for (let i = 0; i < gridArr.length; i++) {
+        if (gridArr[i] === char) {
+          const usage = currentUsage[i] || 0;
+          if (usage < minUsage) {
+            minUsage = usage;
+            bestIdx = i;
+          }
+        }
+      }
+
+      if (bestIdx !== -1) {
+        currentUsage[bestIdx] = (currentUsage[bestIdx] || 0) + 1;
+        indices[bestIdx] = currentUsage[bestIdx];
       }
     }
     return indices;
@@ -809,7 +1230,9 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           setRareWords(newRareWords);
           
           if (newRareWords.length % 5 === 0) {
-             const reward = generateRandomReward();
+             const { level } = getLevelData(totalScore);
+             const rankName = getRankMeta(level).name;
+             const reward = generateRandomReward(rankName);
              setPendingRewards(prev => [...prev, { achievement: `Коллекционер: ${newRareWords.length} слов!`, reward }]);
              playSfx('reward_fanfare');
           }
@@ -823,11 +1246,18 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         }
       } else {
         playSfx('success');
-        showToast(`+${finalPoints}`, 'good');
+        if (isMarathonMode) showToast(`+${targetWord.length} сек!`, 'good');
+        else showToast(`+${finalPoints}`, 'good');
       }
 
       setFoundWords(prev => [{ text: targetWord, score: finalPoints }, ...prev]);
       setScore(s => s + finalPoints);
+      
+      if (isMarathonMode) {
+          setTimeLeft(t => t + targetWord.length);
+          setMarathonSecondsAdded(p => p + targetWord.length);
+      }
+
       setTotalWords(prev => prev + 1);
 
       if (hintWord && targetWord === hintWord.toLowerCase()) {
@@ -960,53 +1390,17 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     showToast('Джокер активен!', 'good');
   };
 
-  //Поиск определения слова
+  // Поиск определения слова
   const fetchWordDefinition = async (word: string) => {
-    setIsDefinitionLoading(true);
     try {
-      // 1. Запрашиваем содержимое страницы через revisions
-      // redirects=1 автоматически перенаправит с "Арбуз" на "арбуз"
-      const url = `https://ru.wiktionary.org/w/api.php?action=query&prop=revisions&rvprop=content&rvslots=main&titles=${encodeURIComponent(word.toLowerCase())}&redirects=1&format=json&origin=*`;
-
-      const response = await fetch(url);
-      const data = await response.json();
-
-      const pages = data.query.pages;
-      const pageId = Object.keys(pages)[0];
-
-      if (pageId === "-1") {
-        setHintDefinition("Слово не найдено в словаре.");
-        return;
-      }
-
-      // Получаем текст всей страницы
-      const wikitext = pages[pageId].revisions[0].slots.main["*"];
-
-      // 2. Ищем строку определения. В Викисловаре это строка, начинающаяся с "# "
-      // Регулярное выражение ищет первую такую строку
-      const match = wikitext.match(/#\s*([^{#\n][^#\n]+)/);
-
-      if (match && match[1]) {
-        let definition = match[1]
-          .replace(/\[\[|\]\]/g, "") // Убираем ссылки [[слово]]
-          .replace(/\{\{[^}]+\}\}/g, "") // Убираем шаблоны {{значение|...}}
-          .replace(/''+/g, "") // Убираем курсив/жирный текст
-          .trim();
-
-        // Если после очистки что-то осталось, берем первое предложение
-        if (definition) {
-          setHintDefinition(definition.split('.')[0] + ".");
+        const result = await apiClient.searchWord(word);
+        if (result && result.definition) {
+            setHintDefinition(result.definition);
         } else {
-          setHintDefinition("Значение найдено, но его сложно отобразить кратко.");
+            setHintDefinition("Определение не найдено.");
         }
-      } else {
-        setHintDefinition("Не удалось извлечь краткое определение.");
-      }
     } catch (e) {
-      console.error("Ошибка словаря:", e);
-      setHintDefinition("Ошибка подключения к Викисловарю.");
-    } finally {
-      setIsDefinitionLoading(false);
+        setHintDefinition("Ошибка загрузки определения.");
     }
   };
 
@@ -1015,7 +1409,11 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     const dictionary = getDictionary();
     if (!dictionary) return;
 
-    const availableStr = grid.join('').toLowerCase();
+    let availableGrid = [...grid];
+    if (marathonSwapTarget !== null) {
+        availableGrid[marathonSwapTarget] = ''; 
+    }
+    const availableStr = availableGrid.join('').toLowerCase();
     const possibleWords: string[] = [];
     const foundSet = new Set(foundWords.map(w => w.text.toLowerCase()));
 
@@ -1027,12 +1425,11 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       // Это исключает текущее слово-подсказку из списка кандидатов
       if (word.length < 3 || word.length > 5 || foundSet.has(word) || word === currentHintLower || usedHints.has(word)) continue;
 
-      let tempPool = availableStr;
       let possible = true;
       for (const char of word) {
-        const idx = tempPool.indexOf(char);
-        if (idx === -1) { possible = false; break; }
-        tempPool = tempPool.substring(0, idx) + tempPool.substring(idx + 1);
+        // Мы разрешаем повторное использование букв (логика "МАМА" с одной "М" и "А")
+        // Поэтому просто проверяем наличие буквы в сетке
+        if (!availableStr.includes(char)) { possible = false; break; }
       }
       if (possible) possibleWords.push(word);
     }
@@ -1043,16 +1440,15 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
       // Сортируем по длине (как в вашем оригинальном коде)
       possibleWords.sort((a, b) => b.length - a.length);
 
-      // Берем самое длинное из доступных (которое не является текущим)
+      // Берем самое длинное из доступных
       let nextHint = possibleWords[0];
 
       setUsedHints(prev => new Set(prev).add(nextHint));
       setHintWord(nextHint.toUpperCase());
       setHintDefinition(null);
       setBonusHintLeft(prev => prev - 1);
-      setHintActiveSeconds(20);
+      setHintActiveSeconds(15);
       setHintRevealLeft(5);
-      showToast('Другое слово!', 'good');
       fetchWordDefinition(nextHint);
     } else {
       playSfx('error');
@@ -1105,13 +1501,12 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   };
 
   // Функция покупки пакета бонусов
-  const handleBuyBonuses = (items: { type: 'time' | 'hint' | 'swap' | 'wildcard', cost: number, amount: number }[]): boolean => {
+  const handleBuyBonuses = async (items: { type: 'time' | 'hint' | 'swap' | 'wildcard', cost: number, amount: number }[]) => {
     const totalCost = items.reduce((sum, item) => sum + item.cost, 0);
 
     if (coins >= totalCost) {
       const newCoins = coins - totalCost;
-      setCoins(newCoins);
-
+      
       let newTime = bonusTimeLeft;
       let newHint = bonusHintLeft;
       let newSwap = bonusSwapLeft;
@@ -1126,24 +1521,33 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         }
       });
 
+      // Сначала обновляем UI для отзывчивости
+      setCoins(newCoins);
       setBonusTimeLeft(newTime);
       setBonusHintLeft(newHint);
       setBonusSwapLeft(newSwap);
       setBonusWildcardLeft(newWildcard);
 
       playSfx('bonus');
-      showToast(`Куплено бонусов: ${items.reduce((a, i) => a + i.amount, 0)}`, 'good');
       
-      // Сохраняем сразу, чтобы не потерять прогресс при закрытии
-      saveUserData({
-        telegramId: tgUser?.id,
-        username: USER_NAME,
-        score: totalScore,
-        bonuses: { time: newTime, hint: newHint, swap: newSwap, wildcard: newWildcard },
-        rareWords, totalWords, highScore, daysPlayed, streak,
-        coins: newCoins
-      });
-      return true;
+      try {
+        // Сохраняем на сервер
+        await saveUserData({
+          telegramId: USER_ID,
+          username: USER_NAME,
+          score: totalScore,
+          bonuses: { time: newTime, hint: newHint, swap: newSwap, wildcard: newWildcard },
+          rareWords, totalWords, highScore, daysPlayed, streak,
+          coins: newCoins
+        });
+        showToast(`Куплено бонусов: ${items.reduce((a, i) => a + i.amount, 0)}`, 'good');
+        return true;
+      } catch (e) {
+        console.error("Ошибка покупки:", e);
+        showToast('Ошибка соединения, отмена...', 'bad');
+        // Откат (в идеале)
+        return false;
+      }
     } else {
       playSfx('error');
       showToast('Недостаточно монет!', 'bad');
@@ -1151,10 +1555,55 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
     }
   };
 
-  const isCurrentChallenge = dailyStatus.challengeId === currentChallengeId;
-  const dailyLevelsDone = isCurrentChallenge && dailyStatus.scores ? Object.keys(dailyStatus.scores).map(Number) : [];
-  const isDailyFullComplete = isCurrentChallenge && [10, 8, 6].every(l => dailyStatus.scores && Object.prototype.hasOwnProperty.call(dailyStatus.scores, l));
-  const currentDailyScore = isCurrentChallenge && dailyStatus.scores ? Object.values(dailyStatus.scores).reduce((a, b) => a + b, 0) : 0;
+  const handleClaimRewardFromModal = async (rewardId: string, multiplier: number) => {
+      try {
+          const res = await apiClient.claimReward(rewardId, multiplier);
+          if (res.success && res.bonuses) {
+              setClaimedRewards(prev => [...prev, rewardId]);
+              setBonusTimeLeft(res.bonuses.time);
+              setBonusHintLeft(res.bonuses.hint);
+              setBonusSwapLeft(res.bonuses.swap);
+              setBonusWildcardLeft(res.bonuses.wildcard);
+              playSfx('reward_fanfare');
+              // Тост покажем при закрытии окна
+              
+              // Показываем попап с наградой
+              setActiveReward({ 
+                  achievement: 'Новое достижение!', 
+                  reward: { type: 'bundle', items: [{type: 'time', amount: 1 * multiplier}, {type: 'hint', amount: 1 * multiplier}, {type: 'swap', amount: 1 * multiplier}, {type: 'wildcard', amount: 1 * multiplier}] } as any 
+              });
+          }
+      } catch (e) {
+          console.error(e);
+          showToast('Ошибка получения награды', 'bad');
+      }
+  };
+
+  if (!isAuthenticated) {
+    return <LoginScreen onLogin={(user) => { 
+      setBrowserUser(user);
+      // Сразу синхронизируем стейт из полученного профиля
+      setTotalScore(user.score || 0);
+      setHighScore(user.high_score || 0);
+      setCoins(user.coins || 0);
+      setDaysPlayed(user.days_played || 0);
+      setStreak(user.streak || 0);
+      if (user.rare_words) setRareWords(user.rare_words);
+      
+      // Бонусы и места
+      setBonusTimeLeft(user.bonus_time ?? 2);
+      setBonusHintLeft(user.bonus_hint ?? 2);
+      setBonusSwapLeft(user.bonus_swap ?? 2);
+      setBonusWildcardLeft(user.bonus_wildcard ?? 2);
+      setDailyPlaces({
+        first: user.daily_1_place || 0,
+        second: user.daily_2_place || 0,
+        third: user.daily_3_place || 0
+      });
+
+      setIsAuthenticated(true); 
+    }} />;
+  }
 
   if (isDictLoading) {
     return (
@@ -1170,47 +1619,45 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
   return (
     <div className="app-wrapper">
       {isMenuOpen && (
-        <SettingsMenu
-          musicVolume={musicVolume} setMusicVolume={setMusicVolume}
-          sfxVolume={sfxVolume} setSfxVolume={setSfxVolume}
-          theme={theme} setTheme={setTheme}
+        <AboutSection
           onClose={() => setIsMenuOpen(false)}
-          onExit={() => setShowConfirm(true)}
           playSfx={playSfx}
-          showExitButton={status === 'playing'}
-          isAdmin={tgUser?.id ? ADMIN_IDS.includes(tgUser.id) : false}
-          onOpenAdmin={() => { setIsMenuOpen(false); setStatus('admin'); }}
-        />
-      )}
-      {isAboutOpen && (
-        <AboutSection 
-          onClose={() => setIsAboutOpen(false)} 
-          playSfx={playSfx} 
           bonuses={{
             time: bonusTimeLeft,
             hint: bonusHintLeft,
             swap: bonusSwapLeft,
             wildcard: bonusWildcardLeft
           }}
-          onOpenShop={() => { setIsAboutOpen(false); setShopPreviousScreen('about'); setIsShopOpen(true); }}
-          showRanks={status !== 'playing'}
-          onSubmitFeedback={(msg) => saveFeedback && saveFeedback({
-            telegramId: tgUser?.id,
-            username: USER_NAME,
-            message: msg
-          })}
+          onOpenShop={() => { setIsMenuOpen(false); setIsShopOpen(true); }}
+          onSubmitFeedback={saveFeedback}
           isDailyMode={isDailyMode}
+          isMarathonMode={isMarathonMode}
+          isGameActive={status === 'playing'}
+          musicVolume={musicVolume} setMusicVolume={setMusicVolume}
+          sfxVolume={sfxVolume} setSfxVolume={setSfxVolume}
+          theme={theme} setTheme={setTheme}
+          isAdmin={tgUser?.id ? ADMIN_IDS.includes(tgUser.id) : false}
+          onOpenAdmin={() => { setIsMenuOpen(false); setStatus('admin'); }}
         />
       )}
-      {activeReward && (
-        <RewardModal
-          achievement={activeReward.achievement}
-          reward={activeReward.reward}
-          onClose={handleClaimReward}
-          playSfx={playSfx}
+      {showMyAchievements && (
+        <MyAchievementsModal 
+          words={rareWords} 
+          currentLevel={getLevelData(totalScore).level} 
+          stats={{
+            totalWords,
+            highScore,
+            marathonHighScore,
+            daysPlayed
+          }}
+          claimedRewards={claimedRewards}
+          onClaimReward={handleClaimRewardFromModal}
+          onClose={() => setShowMyAchievements(false)} 
+          playSfx={playSfx} 
+          unclaimedRewardsCount={unclaimedRewardsCount}
         />
       )}
-      {showCollection && <CollectionModal words={rareWords} onClose={() => setShowCollection(false)} playSfx={playSfx} />}
+      {showStreakInfo && <StreakInfoModal streak={streak} onClose={() => setShowStreakInfo(false)} playSfx={playSfx} />}
       {isShopOpen && <ShopModal 
         coins={coins}
         onBuyBonuses={handleBuyBonuses}
@@ -1218,7 +1665,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         onClose={() => { 
         setIsShopOpen(false); 
         setShopInitialTab('bonuses');
-        if (shopPreviousScreen === 'about') setIsAboutOpen(true);
+        if (shopPreviousScreen === 'about') setIsMenuOpen(true);
         else if (shopPreviousScreen === 'achievements') setIsAchievementsOpen(true);
       }} playSfx={playSfx} />}
       {status === 'admin' && (
@@ -1226,10 +1673,10 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           onClose={() => setStatus('menu')} 
           playSfx={playSfx} 
           fetchFeedbacks={fetchFeedbacks} 
-          addCustomWord={(w) => addCustomWord(w, tgUser?.id)}
-          fetchAdminCustomWords={fetchAdminCustomWords}
+          addCustomWord={(w) => addCustomWord(w)}
           deleteCustomWord={deleteCustomWord}
           updateCustomWord={updateCustomWord}
+          onSearchWord={onSearchWord}
           onReply={sendFeedbackReply}
           onArchive={archiveFeedback}
           onDelete={deleteFeedback}
@@ -1265,7 +1712,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           onClose={() => setIsAchievementsOpen(false)} 
           playSfx={playSfx}
           username={USER_NAME}
-          avatarUrl={tgUser?.photo_url}
+          avatarUrl={USER_AVATAR}
           rank={getUserRank(totalScore)}
           totalScore={totalScore}
           highScore={highScore}
@@ -1316,6 +1763,16 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         />
       )}
 
+      {showOnboarding && (
+        <OnboardingModal 
+          playSfx={playSfx} 
+          onClose={() => {
+            localStorage.setItem('slovodel_onboarding_completed', 'true');
+            setShowOnboarding(false);
+          }} 
+        />
+      )}
+
       {status === 'menu' && (
         <MainMenu
           streak={streak}
@@ -1325,10 +1782,11 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           openGlobalRanking={() => openGlobalRanking('all')}
           openAchievements={() => setIsAchievementsOpen(true)}
           playSfx={playSfx}
-          setShowCollection={setShowCollection}
-          onOpenAbout={() => setIsAboutOpen(true)}
-          setIsMenuOpen={setIsMenuOpen}
+          onOpenMyAchievements={() => setShowMyAchievements(true)}
+          onOpenStreakInfo={() => setShowStreakInfo(true)}
+          onOpenMenu={() => setIsMenuOpen(true)}
           userName={USER_NAME}
+          avatarUrl={USER_AVATAR}
           totalScore={totalScore}
           highScore={highScore}
           isDailyPlayedToday={isDailyFullComplete}
@@ -1342,6 +1800,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
             if (tab) setShopInitialTab(tab);
             setIsShopOpen(true);
           }}
+          unclaimedRewardsCount={unclaimedRewardsCount}
         />
       )}
 
@@ -1353,7 +1812,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           userName={USER_NAME}
           onMenu={() => { 
             setStatus('menu'); 
-            tg?.MainButton.hide();
+            tg?.MainButton.hide(); // Убеждаемся, что она скрыта, если вдруг была показана
             if (isDailyMode) {
               if (!isDailyFullComplete) {
                 setIsDailyChallengeOpen(true);
@@ -1365,19 +1824,23 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           onRankModalClose={() => {
             if (newRankReached) {
               let rewardItems: {type: string, amount: number}[] = [];
-              
-              if (newRankReached.includes("Книжный")) rewardItems = [{type: 'time', amount: 1}];
-              else if (newRankReached.includes("Буквенный")) rewardItems = [{type: 'swap', amount: 1}, {type: 'time', amount: 1}];
-              else if (newRankReached.includes("Словесный")) rewardItems = [{type: 'swap', amount: 1}, {type: 'hint', amount: 1}];
-              else if (newRankReached.includes("Адепт")) rewardItems = [{type: 'time', amount: 1}, {type: 'swap', amount: 1}, {type: 'wildcard', amount: 1}];
-              else if (newRankReached.includes("Мастер")) rewardItems = [{type: 'time', amount: 1}, {type: 'hint', amount: 1}, {type: 'swap', amount: 1}, {type: 'wildcard', amount: 1}];
-              else if (newRankReached.includes("Магистр")) rewardItems = [{type: 'time', amount: 3}, {type: 'hint', amount: 3}, {type: 'swap', amount: 3}, {type: 'wildcard', amount: 3}];
-              else if (newRankReached.includes("Живая")) rewardItems = [{type: 'time', amount: 5}, {type: 'hint', amount: 5}, {type: 'swap', amount: 5}, {type: 'wildcard', amount: 5}];
-              else if (newRankReached.includes("Оракул")) rewardItems = [{type: 'time', amount: 10}, {type: 'hint', amount: 10}, {type: 'swap', amount: 10}, {type: 'wildcard', amount: 10}];
+              const levelMatch = newRankReached.match(/(\d+) уровень/);
+              const level = levelMatch ? parseInt(levelMatch[1], 10) : 0;
+
+              if (level === 1) rewardItems = [{type: 'time', amount: 1}];
+              else if (level === 2) rewardItems = [{type: 'swap', amount: 1}];
+              else if (level === 3) rewardItems = [{type: 'hint', amount: 1}];
+              else if (level === 4) rewardItems = [{type: 'time', amount: 1}, {type: 'wildcard', amount: 1}];
+              else if (level === 5) rewardItems = [{type: 'time', amount: 1}, {type: 'hint', amount: 1}, {type: 'swap', amount: 1}];
+              else if (level === 6) rewardItems = [{type: 'time', amount: 1}, {type: 'hint', amount: 1}, {type: 'swap', amount: 1}, {type: 'wildcard', amount: 1}];
+              else if (level === 7) rewardItems = [{type: 'time', amount: 2}, {type: 'hint', amount: 2}, {type: 'swap', amount: 2}, {type: 'wildcard', amount: 2}];
+              else if (level === 8) rewardItems = [{type: 'time', amount: 3}, {type: 'hint', amount: 3}, {type: 'swap', amount: 3}, {type: 'wildcard', amount: 3}];
+              else if (level === 9) rewardItems = [{type: 'time', amount: 4}, {type: 'hint', amount: 4}, {type: 'swap', amount: 4}, {type: 'wildcard', amount: 4}];
+              else if (level >= 10) rewardItems = [{type: 'time', amount: 5}, {type: 'hint', amount: 5}, {type: 'swap', amount: 5}, {type: 'wildcard', amount: 5}];
               
               if (rewardItems.length > 0) {
                   const reward = { type: 'bundle', items: rewardItems };
-                  setPendingRewards(prev => [...prev, { achievement: `Новое звание: ${newRankReached}!`, reward: reward as any }]);
+                  setPendingRewards(prev => [...prev, { achievement: `Новый уровень: ${newRankReached}!`, reward: reward as any }]);
               }
             }
           }}
@@ -1388,11 +1851,13 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
         <GameScreen
           score={score}
           isDailyMode={isDailyMode}
+          isMarathonMode={isMarathonMode}
+          marathonSecondsAdded={marathonSecondsAdded}
+          marathonSwapTarget={marathonSwapTarget}
           timeLeft={timeLeft}
-          onOpenAbout={() => setIsAboutOpen(true)}
           onOpenMenu={() => setIsMenuOpen(true)}
           hintWord={hintWord}
-          isDefinitionLoading={isDefinitionLoading}
+          isDefinitionLoading={false}
           hintDefinition={hintDefinition}
           foundWords={foundWords}
           currentInput={currentInput}
@@ -1406,6 +1871,7 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
           bonusWildcardLeft={bonusWildcardLeft}
           wildcardActiveSeconds={wildcardActiveSeconds}
           hintActiveSeconds={hintActiveSeconds}
+          hintRevealLeft={hintRevealLeft}
           toggleSwapMode={toggleSwapMode}
           bonusSwapLeft={bonusSwapLeft}
           isSwapActive={isSwapActive}
@@ -1426,9 +1892,20 @@ export default function App({ saveUserData, saveDailyScore, getUserData, getActi
 
       {/* Глобальные уведомления (Тосты) */}
       {message && (
-        <div className={`fixed top-24 left-1/2 -translate-x-1/2 px-6 py-3 rounded-2xl font-bold text-white shadow-2xl z-[1000] animate-bounce text-center backdrop-blur-md border border-white/20 ${message?.type === 'good' ? 'bg-indigo-600/90' : 'bg-red-500/90'}`}>
-          {message?.text}
+        <div className="absolute top-24 inset-x-0 flex justify-center z-[1000] pointer-events-none">
+          <div className={`pointer-events-auto px-6 py-3 rounded-2xl font-bold text-white shadow-sm animate-bounce text-center backdrop-blur-md border border-white/20 ${message?.type === 'good' ? 'bg-indigo-600/90' : 'bg-red-500/90'}`}>
+            {message?.text}
+          </div>
         </div>
+      )}
+
+      {activeReward && (
+        <RewardModal
+          achievement={activeReward.achievement}
+          reward={activeReward.reward}
+          onClose={handleClaimReward}
+          playSfx={playSfx}
+        />
       )}
     </div>
   );

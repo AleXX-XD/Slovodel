@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { X, ShoppingBag, Hourglass, Lightbulb, RefreshCw, SquareAsterisk, Star, Minus, Plus } from 'lucide-react';
+import { apiClient } from '../utils/apiClient';
 
 interface ShopModalProps {
   onClose: () => void;
   playSfx: (sound: any) => void;
   coins: number;
-  onBuyBonuses: (items: { type: 'time' | 'hint' | 'swap' | 'wildcard', cost: number, amount: number }[]) => boolean;
+  onBuyBonuses: (items: { type: 'time' | 'hint' | 'swap' | 'wildcard', cost: number, amount: number }[]) => Promise<boolean>;
   initialTab?: 'bonuses' | 'coins';
 }
 
 export const ShopModal = ({ onClose, playSfx, coins, onBuyBonuses, initialTab = 'bonuses' }: ShopModalProps) => {
   const [activeTab, setActiveTab] = useState<'bonuses' | 'coins'>(initialTab);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [isBuying, setIsBuying] = useState(false);
 
   const getQuantity = (id: string) => quantities[id] || 0;
 
@@ -42,18 +44,59 @@ export const ShopModal = ({ onClose, playSfx, coins, onBuyBonuses, initialTab = 
     { id: 5, amount: 1500, price: 500, label: 'Гора золота' },
   ];
 
-  const handleBuyCoins = (pack: any) => {
+  const handleBuyCoins = async (pack: any) => {
+    if (isBuying) return;
     playSfx('click');
-    // Здесь должен быть вызов Telegram Invoice
-    // window.Telegram.WebApp.openInvoice(invoiceUrl);
-    alert(`В будущем здесь откроется оплата ${pack.price} Telegram Stars за ${pack.amount} словокоинов.`);
+    setIsBuying(true);
+
+    try {
+        const res = await apiClient.createInvoice(pack.id);
+        
+        if (res && res.invoiceLink) {
+            // Открываем инвойс
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.openInvoice(res.invoiceLink, async (status: string) => {
+                    if (status === 'paid') {
+                        // Проверяем транзакцию на сервере
+                        try {
+                            const verifyRes = await apiClient.verifyPayment();
+                            if (verifyRes && verifyRes.success) {
+                                alert(`Успешно! Начислено: ${verifyRes.added} монет.`);
+                                onClose(); // Закрываем магазин, чтобы обновить баланс (или можно обновить стейт)
+                            } else {
+                                alert("Платеж обрабатывается. Монеты поступят в ближайшее время.");
+                            }
+                        } catch (e) {
+                            alert("Ошибка проверки платежа. Если списались средства, напишите в поддержку.");
+                        }
+                    } else if (status === 'cancelled') {
+                        // alert("Отменено");
+                    } else {
+                        alert("Ошибка платежа: " + status);
+                    }
+                    setIsBuying(false);
+                });
+            } else {
+                alert("Оплата доступна только в Telegram Mini App");
+                setIsBuying(false);
+            }
+        } else {
+            alert("Ошибка создания счета");
+            setIsBuying(false);
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Ошибка сети");
+        setIsBuying(false);
+    }
   };
 
   const totalCost = bonusItems.reduce((acc, item) => acc + (item.cost * getQuantity(item.id)), 0);
   const totalCount = bonusItems.reduce((acc, item) => acc + getQuantity(item.id), 0);
 
-  const handleBuy = () => {
-    if (totalCount === 0) return;
+  const handleBuy = async () => {
+    if (totalCount === 0 || isBuying) return;
+    setIsBuying(true);
     
     const items = bonusItems.map(item => ({
         type: item.type,
@@ -61,9 +104,11 @@ export const ShopModal = ({ onClose, playSfx, coins, onBuyBonuses, initialTab = 
         amount: getQuantity(item.id)
     })).filter(i => i.amount > 0);
     
-    if (onBuyBonuses(items)) {
+    const success = await onBuyBonuses(items);
+    if (success) {
       setQuantities({});
     }
+    setIsBuying(false);
   };
 
   return (

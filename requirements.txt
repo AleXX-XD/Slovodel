@@ -1,2 +1,10 @@
-supabase
+flask
+flask-sqlalchemy
+psycopg2-binary
+gunicorn
 requests
+PyJWT
+python-dotenv
+flask-cors
+APScheduler
+pytz

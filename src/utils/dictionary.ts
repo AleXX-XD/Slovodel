@@ -1,37 +1,32 @@
-// Используем проверенный источник (Harrix Russian Nouns).
-// Чтобы добавить больше слов, создайте файл words.txt в папке public и добавьте сюда строку "./words.txt"
-const DICTIONARY_URLS = [
-  "./words.txt"
-];
+// Используем легкий файл words_list.json (только слова)
+const DICTIONARY_URL = "/data/words_list.json";
 
 let dictionaryCache: Set<string> | null = null;
 
-export const loadDictionary = async (): Promise<Set<string>> => {
-  if (dictionaryCache) return dictionaryCache;
+export const loadDictionary = async (forceReload = false): Promise<Set<string>> => {
+  if (dictionaryCache && !forceReload) return dictionaryCache;
 
   try {
-    // Загружаем все словари параллельно
-    const promises = DICTIONARY_URLS.map(url => 
-      fetch(url).then(res => {
-        if (!res.ok) throw new Error(`Failed to load ${url}`);
-        return res.text();
-      }).catch(e => {
-        console.warn(`Ошибка загрузки словаря ${url}:`, e);
-        return ""; // Если один словарь упал, продолжаем с другими
-      })
-    );
+    // Добавляем timestamp для обхода кэша
+    const response = await fetch(`${DICTIONARY_URL}?t=${Date.now()}`);
+    if (!response.ok) throw new Error(`Failed to load ${DICTIONARY_URL}`);
 
-    const texts = await Promise.all(promises);
-    const combinedText = texts.join('\n');
-
-    if (!combinedText || combinedText.length < 100) throw new Error("Все словари недоступны");
-
-    // Разбиваем, чистим, фильтруем (оставляем только кириллицу)
-    const words = combinedText.split(/\r?\n/)
-      .map(w => w.trim().toLowerCase().replace(/ё/g, 'е'))
-      .filter(w => w.length > 1 && /^[а-я]+(-[а-я]+)*$/.test(w));
+    const data: string[] = await response.json();
     
-    dictionaryCache = new Set(words);
+    if (!Array.isArray(data)) throw new Error("Invalid dictionary format");
+
+    const words = new Set<string>();
+
+    data.forEach((rawWord) => {
+      if (typeof rawWord === 'string') {
+        const cleanWord = rawWord.trim().toLowerCase().replace(/ё/g, 'е');
+        if (cleanWord.length > 1 && /^[а-я]+(-[а-я]+)*$/.test(cleanWord)) {
+          words.add(cleanWord);
+        }
+      }
+    });
+    
+    dictionaryCache = words;
     console.log(`Словарь успешно загружен: ${dictionaryCache.size} слов`);
     return dictionaryCache;
   } catch (error) {
@@ -48,3 +43,8 @@ export const loadDictionary = async (): Promise<Set<string>> => {
 };
 
 export const getDictionary = () => dictionaryCache;
+
+// Устарело: Определения теперь загружаются через API асинхронно
+export const getDefinition = (_word: string): string | null => {
+  return null;
+};

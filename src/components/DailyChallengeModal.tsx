@@ -1,4 +1,5 @@
-import { X, Zap, Calendar, CheckCircle } from 'lucide-react';
+import { useState } from 'react';
+import { X, Zap, Calendar, CheckCircle, Info } from 'lucide-react';
 
 interface DailyChallengeModalProps {
   onClose: () => void;
@@ -9,8 +10,38 @@ interface DailyChallengeModalProps {
 }
 
 export const DailyChallengeModal = ({ onClose, onStart, playSfx, completedLevels, currentScore = 0 }: DailyChallengeModalProps) => {
+  const [infoLevel, setInfoLevel] = useState<number | null>(null);
+
+  const getLevelInfo = (level: number) => {
+      switch(level) {
+          case 10: return { title: "Лёгкий уровень", desc: "Вам дается 10 букв. Идеально для разминки и поиска длинных слов.", mult: "x1" };
+          case 8: return { title: "Средний уровень", desc: "Вам дается 8 букв. Баланс между сложностью и возможностями.", mult: "x1.5" };
+          case 6: return { title: "Сложный уровень", desc: "Всего 6 букв. Только для настоящих эрудитов!", mult: "x2" };
+          default: return { title: "", desc: "", mult: "" };
+      }
+  };
+
   return (
     <div className="modal-overlay z-[400]">
+      {/* Info Modal */}
+      {infoLevel && (
+        <div className="modal-overlay z-[450]" onClick={() => setInfoLevel(null)}>
+          <div className="modal-content max-w-xs" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-indigo-900 dark:text-white">{getLevelInfo(infoLevel).title}</h3>
+              <button onClick={() => setInfoLevel(null)} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 mb-4 leading-relaxed text-sm">
+                {getLevelInfo(infoLevel).desc}
+            </p>
+            <div className="bg-indigo-50 dark:bg-slate-800 p-3 rounded-xl text-center">
+                <span className="text-xs uppercase font-bold opacity-60">Множитель очков</span>
+                <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{getLevelInfo(infoLevel).mult}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="modal-content max-w-sm">
         <div className="modal-header-container">
           <div className="modal-header-title-group">
@@ -49,19 +80,28 @@ export const DailyChallengeModal = ({ onClose, onStart, playSfx, completedLevels
             ].map((item) => {
               const isDone = completedLevels.includes(item.lvl);
               return (
-                <button 
-                  key={item.lvl}
-                  onClick={() => !isDone && onStart(item.lvl)} 
-                  disabled={isDone}
-                  className={`daychallenge-button
-                    ${isDone 
-                      ? 'opacity-50 cursor-not-allowed border-gray-200 text-gray-400' 
-                      : `${item.color} ${item.border} ${item.hover} active:scale-[0.98]`
-                    }`}
-                >
-                  <span className="uppercase">{item.label} <span className="normal-case opacity-60 ml-1">{item.mult}</span></span>
-                  {isDone && <div className="flex items-center gap-1 text-green-500"><CheckCircle size={20} /> <span className="text-[10px]">Готово</span></div>}
-                </button>
+                <div key={item.lvl} className="relative">
+                  <button 
+                    onClick={() => !isDone && onStart(item.lvl)} 
+                    disabled={isDone}
+                    className={`daychallenge-button w-full
+                      ${isDone 
+                        ? 'opacity-50 cursor-not-allowed border-gray-200 text-gray-400' 
+                        : `${item.color} ${item.border} ${item.hover} active:scale-[0.98]`
+                      }`}
+                  >
+                    <span className="uppercase">{item.label} <span className="normal-case opacity-60 ml-1">{item.mult}</span></span>
+                    {isDone && <div className="flex items-center gap-1 text-green-500"><CheckCircle size={20} /> <span className="text-[10px]">Готово</span></div>}
+                  </button>
+                  {!isDone && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); playSfx('click'); setInfoLevel(item.lvl); }}
+                        className="absolute top-0 right-0 h-full px-4 flex items-center justify-center opacity-40 hover:opacity-100 transition-opacity"
+                    >
+                        <Info size={20} />
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>

@@ -1,4 +1,5 @@
 import { Trophy, X, Zap } from 'lucide-react';
+import { LEADERBOARD_TOP_LIMIT } from '../utils/constants';
  
 interface LeaderboardModalProps {
   data: any[];
@@ -82,55 +83,90 @@ export const LeaderboardModal = ({ data, onClose, playSfx, currentUserId, curren
         ) : (
           <>
             {(() => {
+              // 1. Присваиваем ранги всем (Dense Rank)
               let currentRank = 1;
-              return data.map((player: any, i: number) => {
-                // Если очки текущего игрока меньше предыдущего, увеличиваем ранг
+              const rankedData = data.map((player, i) => {
                 if (i > 0 && player.score < data[i - 1].score) {
                   currentRank++;
                 }
-                const rank = currentRank;
-                const isCurrentUser = player.telegram_id === currentUserId;
-                return (
-                  <div 
-                    key={i} 
-                    onClick={() => onPlayerClick?.(player)}
-                    className={`leaderboard-card ${isCurrentUser ? 'leaderboard-card-active' : ''} cursor-pointer active:scale-[0.98]`}
-                  >
-                    <div className="w-6 flex justify-center items-center">
-                      {getPlaceIcon(rank - 1)}
-                    </div>
-                    <img src={player.avatar_url || './image/book_face.png'} alt="avatar" className="avatar-sm" />
-                    <div className="flex-1 min-w-0 text-left">
-                      <p className={`leaderboard-name ${isCurrentUser ? 'leaderboard-name-active' : ''}`}>{player.name}</p>
-                      <p className="leaderboard-subtext">{activeTab === 'all' ? getUserRank(player.score) : 'Очки за испытание'}</p>
-                    </div>
-                    <span className="leaderboard-points">{player.score}</span>
-                  </div>
-                );
+                return { ...player, rank: currentRank };
               });
-            })()}
 
-            {(currentUserRankData) && activeTab === 'all' && (
-              <>
-                {currentUserRankData.rank > data.length + 1 && (
-                  <div className="text-center font-bold opacity-50 my-4">...</div>
-                )}
-                <div 
-                  className="leaderboard-card leaderboard-card-active cursor-pointer active:scale-[0.98]"
-                  onClick={() => onPlayerClick?.({ ...currentUserRankData, telegram_id: currentUserId })}
-                >
-                  <div className="w-6 flex justify-center items-center">
-                    {getPlaceIcon(currentUserRankData.rank - 1)}
-                  </div>
-                  <img src={currentUserRankData.avatar_url || './image/book_face.png'} alt="avatar" className="avatar-md" />
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="leaderboard-name leaderboard-name-active">{currentUserRankData.username}</p>
-                    <p className="leaderboard-subtext">{getUserRank(currentUserRankData.score)}</p>
-                  </div>
-                  <span className="leaderboard-points">{currentUserRankData.score}</span>
-                </div>
-              </>
-            )}
+              // 2. Показываем только топ мест
+              const topList = rankedData.filter(p => p.rank <= LEADERBOARD_TOP_LIMIT);
+              
+              // 3. Ищем текущего юзера в загруженном списке
+              const userInList = rankedData.find(p => p.telegram_id === currentUserId);
+
+              return (
+                <>
+                  {topList.map((player, i) => {
+                    const isCurrentUser = player.telegram_id === currentUserId;
+                    return (
+                      <div 
+                        key={i} 
+                        onClick={() => onPlayerClick?.(player)}
+                        className={`leaderboard-card ${isCurrentUser ? 'leaderboard-card-active' : ''} cursor-pointer active:scale-[0.98]`}
+                      >
+                        <div className="w-8 flex justify-center items-center font-bold text-gray-500 dark:text-gray-400">
+                          {getPlaceIcon(player.rank - 1)}
+                        </div>
+                        <img src={player.avatar_url || './image/book_face.png'} alt="avatar" className="avatar-sm" />
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className={`leaderboard-name ${isCurrentUser ? 'leaderboard-name-active' : ''}`}>{player.name}</p>
+                          <p className="leaderboard-subtext">{activeTab === 'all' ? getUserRank(player.score) : 'Очки за испытание'}</p>
+                        </div>
+                        <span className="leaderboard-points">{player.score}</span>
+                      </div>
+                    );
+                  })}
+
+                  {/* Если юзер есть в списке, но не в топ-N */}
+                  {userInList && userInList.rank > LEADERBOARD_TOP_LIMIT && (
+                    <>
+                      {userInList.rank > LEADERBOARD_TOP_LIMIT + 1 && (
+                        <div className="text-center font-bold opacity-50 my-2 text-xs tracking-widest">. . .</div>
+                      )}
+                      <div 
+                        className="leaderboard-card leaderboard-card-active cursor-pointer active:scale-[0.98] border-t-2 border-indigo-100 dark:border-indigo-900/50 mt-1"
+                        onClick={() => onPlayerClick?.(userInList)}
+                      >
+                        <div className="w-8 flex justify-center items-center font-bold text-indigo-600 dark:text-indigo-400">
+                          {userInList.rank}.
+                        </div>
+                        <img src={userInList.avatar_url || './image/book_face.png'} alt="avatar" className="avatar-md" />
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="leaderboard-name leaderboard-name-active">{userInList.name} (Вы)</p>
+                          <p className="leaderboard-subtext">{activeTab === 'all' ? getUserRank(userInList.score) : 'Очки за испытание'}</p>
+                        </div>
+                        <span className="leaderboard-points">{userInList.score}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Если юзера нет в списке (ранг > загруженного лимита), но есть внешние данные о ранге */}
+                  {!userInList && currentUserRankData && (
+                    <>
+                      <div className="text-center font-bold opacity-50 my-2 text-xs tracking-widest">. . .</div>
+                      <div 
+                        className="leaderboard-card leaderboard-card-active cursor-pointer active:scale-[0.98] border-t-2 border-indigo-100 dark:border-indigo-900/50 mt-1"
+                        onClick={() => onPlayerClick?.({ ...currentUserRankData, telegram_id: currentUserId })}
+                      >
+                        <div className="w-8 flex justify-center items-center font-bold text-indigo-600 dark:text-indigo-400">
+                          {currentUserRankData.rank}.
+                        </div>
+                        <img src={currentUserRankData.avatar_url || './image/book_face.png'} alt="avatar" className="avatar-md" />
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="leaderboard-name leaderboard-name-active">{currentUserRankData.username} (Вы)</p>
+                          <p className="leaderboard-subtext">{getUserRank(currentUserRankData.score)}</p>
+                        </div>
+                        <span className="leaderboard-points">{currentUserRankData.score}</span>
+                      </div>
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </>
         )}
       </div>

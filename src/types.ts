@@ -6,6 +6,12 @@ export interface WordEntry {
   score: number;
 }
 
+export interface RareWord {
+  text: string;
+  length: number;
+  score: number;
+}
+
 export interface LeaderboardEntry {
   name: string;
   score: number;
